@@ -153,9 +153,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
       _gstCtrl.text = b.gstAmount.toStringAsFixed(2);
       _guestNameCtrl.text = b.guestName;
       _tendantNameCtrl.text = b.guestName;
-      _updateAdultsKidsCtrl.text = b.guestName;
       _adults = b.adults;
       _kids = b.kids;
+      _updateAdultsKidsCtrl.text = '${b.adults} Adults, ${b.kids} Kids';
       _checkoutDate = b.checkOut;
       _idProofName =
           b.idProofName ??
@@ -294,6 +294,19 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       : null;
                   if (_selectedBooking != null) {
                     _selectBooking(_selectedBooking!);
+                  } else {
+                    _rentCtrl.text = '';
+                    _gstCtrl.text = '';
+                    _guestNameCtrl.text = '';
+                    _tendantNameCtrl.text = '';
+                    _adults = 1;
+                    _kids = 0;
+                    _updateAdultsKidsCtrl.text = '1 Adults, 0 Kids';
+                    _checkoutDate = null;
+                    _idProofName = null;
+                    _isFileUploaded = false;
+                    _isConfirmed = false;
+                    _isEditMode = false;
                   }
                 }
               });
@@ -1079,7 +1092,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 450),
-              height: 38,
+              height: 44,
               child: TextField(
                 controller: _searchCtrl,
                 onChanged: (val) =>
@@ -1128,28 +1141,32 @@ class _CheckInScreenState extends State<CheckInScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  onChanged: (val) =>
-                      setState(() => _filterQuery = val.trim().toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Search Booking ID / Guest Name',
-                    hintStyle: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
+                SizedBox(
+                  height: 44,
+                  child: TextField(
+                    onChanged: (val) =>
+                        setState(() => _filterQuery = val.trim().toLowerCase()),
+                    decoration: InputDecoration(
+                      hintText: 'Search Booking ID / Guest Name',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        size: 18,
+                        color: Colors.grey,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      isDense: true,
                     ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    isDense: true,
+                    style: const TextStyle(fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -1166,25 +1183,29 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           border: Border.all(color: const Color(0xFFCCCCCC)),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<Guest>(
-                            value: _selectedGuest,
+                            value: _guests.contains(_selectedGuest)
+                                ? _selectedGuest
+                                : null,
                             isExpanded: true,
+                            isDense: true,
                             hint: const Text(
                               'Name/Phone number',
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(fontSize: 13),
                             ),
                             items: _guests.map((g) {
                               return DropdownMenuItem<Guest>(
                                 value: g,
                                 child: Text(
                                   '${g.name} (${g.phone})',
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(fontSize: 13),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               );
@@ -1210,24 +1231,26 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1976D2),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
+                    SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1976D2),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      onPressed: _showAddGuestDialog,
-                      child: const Text(
-                        '+ Add Guest',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                        onPressed: _showAddGuestDialog,
+                        child: const Text(
+                          '+ Add Guest',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1395,78 +1418,83 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Room No.',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE8D3A2), Color(0xFFC7A254)],
-                            ),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: const Color(0xFFB8882A),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFB8882A,
-                                ).withValues(alpha: 0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Room No.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.bed,
-                                size: 16,
-                                color: AppColors.navyDark,
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 44,
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                            ),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFE8D3A2), Color(0xFFC7A254)],
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${_selectedBooking?.roomNumber ?? 101}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFB8882A),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.bed,
+                                  size: 16,
                                   color: AppColors.navyDark,
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.navyDark,
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                                child: const Text(
-                                  'SELECTED',
-                                  style: TextStyle(
-                                    fontSize: 8,
-                                    color: Colors.white,
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${_selectedBooking?.roomNumber ?? 101}',
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppColors.navyDark,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.navyDark,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: const Text(
+                                    'SELECTED',
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 12),
 
@@ -1474,16 +1502,27 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Rent',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Rent',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           SizedBox(
-                            height: 38,
+                            height: 44,
                             child: TextField(
                               controller: _rentCtrl,
                               keyboardType: TextInputType.number,
+                              textAlignVertical: TextAlignVertical.center,
                               onChanged: (_) => _validateFieldRealtime(),
                               decoration: InputDecoration(
                                 filled: true,
@@ -1509,37 +1548,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
                                 isDense: true,
                               ),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                          if (_rentError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error,
-                                    size: 11,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      _rentError!,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -1549,119 +1568,124 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'GST',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 4),
-                          SizedBox(
-                            height: 38,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _gstCtrl,
-                                    keyboardType: TextInputType.number,
-                                    onChanged: (_) => _validateFieldRealtime(),
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: _gstError != null
-                                          ? const Color(0xFFFFF2F0)
-                                          : Colors.white,
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                        borderSide: BorderSide(
-                                          color: _gstError != null
-                                              ? Colors.red.shade700
-                                              : const Color(0xFFCCCCCC),
-                                          width: _gstError != null ? 1.5 : 1.0,
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                        borderSide: BorderSide(
-                                          color: _gstError != null
-                                              ? Colors.red.shade700
-                                              : AppColors.navyDark,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                          ),
-                                      isDense: true,
-                                    ),
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'GST',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
                                 ),
-                                const SizedBox(width: 4),
-                                Container(
-                                  height: 38,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: 44,
+                            child: TextField(
+                              controller: _gstCtrl,
+                              keyboardType: TextInputType.number,
+                              textAlignVertical: TextAlignVertical.center,
+                              onChanged: (_) => _validateFieldRealtime(),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: _gstError != null
+                                    ? const Color(0xFFFFF2F0)
+                                    : Colors.white,
+                                suffixIconConstraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  maxWidth: 32,
+                                  minHeight: 38,
+                                  maxHeight: 38,
+                                ),
+                                suffixIcon: Container(
+                                  margin: const EdgeInsets.only(right: 2),
                                   alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: const Color(0xFFCCCCCC),
+                                  decoration: const BoxDecoration(
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: Color(0xFFCCCCCC),
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(6),
+                                    color: Color(0xFFF7F7F7),
+                                    borderRadius: BorderRadius.only(
+                                      topRight: Radius.circular(5),
+                                      bottomRight: Radius.circular(5),
+                                    ),
                                   ),
                                   child: const Text(
                                     '%',
                                     style: TextStyle(
                                       fontSize: 12,
+                                      fontWeight: FontWeight.bold,
                                       color: Colors.grey,
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          if (_gstError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error,
-                                    size: 11,
-                                    color: Colors.red,
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                    color: _gstError != null
+                                        ? Colors.red.shade700
+                                        : const Color(0xFFCCCCCC),
+                                    width: _gstError != null ? 1.5 : 1.0,
                                   ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      _gstError!,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                    color: _gstError != null
+                                        ? Colors.red.shade700
+                                        : AppColors.navyDark,
+                                    width: 1.5,
                                   ),
-                                ],
+                                ),
+                                contentPadding: const EdgeInsets.only(
+                                  left: 12,
+                                  right: 4,
+                                  top: 10,
+                                  bottom: 10,
+                                ),
+                                isDense: true,
+                              ),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
 
                     Expanded(
-                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Tendant Name',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Tenant Name',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           SizedBox(
-                            height: 38,
+                            height: 44,
                             child: TextField(
                               controller: _tendantNameCtrl,
+                              textAlignVertical: TextAlignVertical.center,
                               onChanged: (_) => _validateFieldRealtime(),
                               decoration: InputDecoration(
                                 filled: true,
@@ -1687,78 +1711,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
                                 isDense: true,
                               ),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                          if (_tendantError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error,
-                                    size: 11,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      _tendantError!,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'No-of Adults',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 4),
-                          SizedBox(
-                            height: 38,
-                            child: DropdownButtonFormField<int>(
-                              initialValue: _adults,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                isDense: true,
-                              ),
-                              items: List.generate(10, (i) => i + 1)
-                                  .map(
-                                    (n) => DropdownMenuItem(
-                                      value: n,
-                                      child: Text(
-                                        n.toString().padLeft(2, '0'),
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (val) {
-                                if (val != null) setState(() => _adults = val);
-                              },
                             ),
                           ),
                         ],
@@ -1770,38 +1731,143 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'No-of Kids',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 4),
-                          SizedBox(
-                            height: 38,
-                            child: DropdownButtonFormField<int>(
-                              initialValue: _kids,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(6),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'No-of Adults',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                isDense: true,
                               ),
-                              items: List.generate(10, (i) => i)
-                                  .map(
-                                    (n) => DropdownMenuItem(
-                                      value: n,
-                                      child: Text(
-                                        n.toString().padLeft(2, '0'),
-                                        style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFCCCCCC),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: _adults,
+                                isExpanded: true,
+                                isDense: true,
+                                icon: const Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Colors.black54,
+                                ),
+                                items: ({for (int i = 1; i <= 20; i++) i, _adults}
+                                        .toList()
+                                      ..sort())
+                                    .map(
+                                      (n) => DropdownMenuItem(
+                                        value: n,
+                                        child: Text(
+                                          n.toString().padLeft(2, '0'),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (val) {
-                                if (val != null) setState(() => _kids = val);
-                              },
+                                    )
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      _adults = val;
+                                      _updateAdultsKidsCtrl.text =
+                                          '$_adults Adults, $_kids Kids';
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'No-of Kids',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFCCCCCC),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: _kids,
+                                isExpanded: true,
+                                isDense: true,
+                                icon: const Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Colors.black54,
+                                ),
+                                items: ({for (int i = 0; i <= 20; i++) i, _kids}
+                                        .toList()
+                                      ..sort())
+                                    .map(
+                                      (n) => DropdownMenuItem(
+                                        value: n,
+                                        child: Text(
+                                          n.toString().padLeft(2, '0'),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      _kids = val;
+                                      _updateAdultsKidsCtrl.text =
+                                          '$_adults Adults, $_kids Kids';
+                                    });
+                                  }
+                                },
+                              ),
                             ),
                           ),
                         ],
@@ -1815,15 +1881,24 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Checkout Date',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Checkout Date',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           InkWell(
                             onTap: () async {
                               final picked = await showDatePicker(
@@ -1835,15 +1910,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               );
                               if (picked != null) {
                                 setState(() {
-                                  _checkoutDate = picked;
+                                    _checkoutDate = picked;
                                   _dateError = null;
                                 });
                               }
                             },
                             child: Container(
-                              height: 38,
+                              height: 44,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                                horizontal: 12,
                               ),
                               decoration: BoxDecoration(
                                 color: _dateError != null
@@ -1865,105 +1940,87 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                     _checkoutDate != null
                                         ? _formatDate(_checkoutDate!)
                                         : 'Select Date',
-                                    style: const TextStyle(fontSize: 12),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                   const Icon(
                                     Icons.calendar_month,
-                                    size: 16,
+                                    size: 18,
                                     color: Colors.black54,
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          if (_dateError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error,
-                                    size: 11,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      _dateError!,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                          const SizedBox(height: 14),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Uploaded File',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
                               ),
                             ),
-                          const SizedBox(height: 12),
-
+                          ),
+                          const SizedBox(height: 6),
                           InkWell(
                             onTap: _handleFileUpload,
                             borderRadius: BorderRadius.circular(6),
                             child: Container(
-                              height: 64,
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: _isFileUploaded
                                     ? const Color(0xFFF0FDF4)
-                                    : const Color(0xFFFBFBFB),
+                                    : const Color(0xFFFAFAFA),
                                 border: Border.all(
                                   color: _isFileUploaded
-                                      ? Colors.green
+                                      ? Colors.green.shade600
                                       : const Color(0xFFCCCCCC),
-                                  style: BorderStyle.solid,
                                 ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Column(
+                              child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        _isFileUploaded
-                                            ? Icons.check_circle
-                                            : Icons.upload_outlined,
-                                        size: 18,
-                                        color: _isFileUploaded
-                                            ? Colors.green
-                                            : Colors.black87,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        _isFileUploaded
-                                            ? 'File Uploaded'
-                                            : 'Click to Upload',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: _isFileUploaded
-                                              ? Colors.green.shade800
-                                              : Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.description_outlined,
-                                        size: 16,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
+                                  Icon(
                                     _isFileUploaded
-                                        ? 'Tap to change file'
-                                        : 'PDF, JPG up to 5MB',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
+                                        ? Icons.check_circle
+                                        : Icons.upload_file,
+                                    size: 18,
+                                    color: _isFileUploaded
+                                        ? Colors.green.shade700
+                                        : AppColors.navyDark,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _isFileUploaded
+                                          ? 'File Uploaded'
+                                          : 'Click to Upload',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: _isFileUploaded
+                                            ? Colors.green.shade800
+                                            : AppColors.navyDark,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                  ),
+                                  Icon(
+                                    Icons.description_outlined,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
                                   ),
                                 ],
                               ),
@@ -1975,21 +2032,30 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     const SizedBox(width: 12),
 
                     Expanded(
-                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Update ID Proof',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Update ID Proof',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           InkWell(
                             onTap: _handleFileUpload,
                             child: Container(
-                              height: 38,
+                              height: 44,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
+                                horizontal: 12,
                               ),
                               decoration: BoxDecoration(
                                 color: _isFileUploaded
@@ -2010,13 +2076,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                     child: Text(
                                       _idProofName ?? 'Upload ID proof...',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 13,
                                         color: _isFileUploaded
                                             ? Colors.green.shade900
                                             : Colors.black87,
                                         fontWeight: _isFileUploaded
                                             ? FontWeight.bold
-                                            : FontWeight.normal,
+                                            : FontWeight.w500,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -2025,7 +2091,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                     _isFileUploaded
                                         ? Icons.verified
                                         : Icons.description_outlined,
-                                    size: 16,
+                                    size: 18,
                                     color: _isFileUploaded
                                         ? Colors.green
                                         : Colors.black54,
@@ -2034,37 +2100,64 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Guest Count',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 4),
-                          SizedBox(
-                            height: 38,
-                            child: DropdownButtonFormField<int>(
-                              initialValue: (_adults + _kids).clamp(1, 10),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(6),
+                          const SizedBox(height: 14),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Guest Count',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                isDense: true,
                               ),
-                              items: List.generate(10, (i) => i + 1)
-                                  .map(
-                                    (n) => DropdownMenuItem(
-                                      value: n,
-                                      child: Text(
-                                        n.toString().padLeft(2, '0'),
-                                        style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFCCCCCC),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: (_adults + _kids).clamp(1, 30),
+                                isExpanded: true,
+                                isDense: true,
+                                icon: const Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Colors.black54,
+                                ),
+                                items: ({
+                                  for (int i = 1; i <= 30; i++) i,
+                                  (_adults + _kids).clamp(1, 30),
+                                }.toList()
+                                      ..sort())
+                                    .map(
+                                      (n) => DropdownMenuItem(
+                                        value: n,
+                                        child: Text(
+                                          n.toString().padLeft(2, '0'),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (val) {},
+                                    )
+                                    .toList(),
+                                onChanged: (val) {},
+                              ),
                             ),
                           ),
                         ],
@@ -2073,42 +2166,82 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     const SizedBox(width: 12),
 
                     Expanded(
-                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Update No. of Adults/Kids',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Update No. of Adults/Kids',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           SizedBox(
-                            height: 38,
+                            height: 44,
                             child: TextField(
                               controller: _updateAdultsKidsCtrl,
+                              textAlignVertical: TextAlignVertical.center,
                               decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                 ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFCCCCCC),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.navyDark,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
                                 isDense: true,
                               ),
-                              style: const TextStyle(fontSize: 12),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Update Guest Name',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(height: 14),
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Update Guest Name',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           SizedBox(
-                            height: 38,
+                            height: 44,
                             child: TextField(
                               controller: _guestNameCtrl,
                               focusNode: _guestNameFocus,
+                              textAlignVertical: TextAlignVertical.center,
                               onChanged: (_) => _validateFieldRealtime(),
                               decoration: InputDecoration(
                                 filled: true,
@@ -2134,221 +2267,274 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
                                 isDense: true,
                               ),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                          if (_guestNameError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error,
-                                    size: 11,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      _guestNameError!,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
 
                     Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAFAFA),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFE5E5E5)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Additional Charges',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            height: 18,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Charges Breakdown',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF555555),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 126,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAFAFA),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFE5E5E5),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Room Charge',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                  ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: const [
+                                    Text(
+                                      'Additional Charges',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: AppColors.navyDark,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.receipt_long,
+                                      size: 16,
+                                      color: AppColors.navyDark,
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  '2 beds',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                  ),
+                                const Divider(
+                                  height: 8,
+                                  thickness: 0.8,
+                                  color: Color(0xFFEEEEEE),
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: const [
+                                    Text(
+                                      'Room Charge',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    Text(
+                                      '2 beds',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Extra Charges',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    Text(
+                                      '₹${_extraCharges.toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Tax (GST)',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    Text(
+                                      '₹${(_selectedBooking != null ? _selectedBooking!.gstAmount : 112).toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Extra Charges',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                Text(
-                                  '₹${_extraCharges.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Tax',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                Text(
-                                  '₹${(_selectedBooking != null ? _selectedBooking!.gstAmount : 2500).toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: const BorderSide(color: Colors.redAccent),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
-                      ),
-                      onPressed: _selectedBooking != null
-                          ? () => _deleteBooking(_selectedBooking!)
-                          : null,
-                      icon: const Icon(Icons.delete_outline, size: 16),
-                      label: const Text(
-                        'Delete',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: _isEditMode
-                            ? AppColors.navyDark.withValues(alpha: 0.1)
+                        onPressed: _selectedBooking != null
+                            ? () => _deleteBooking(_selectedBooking!)
                             : null,
-                        foregroundColor: Colors.black87,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text(
+                          'Delete',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      onPressed: () {
-                        setState(() => _isEditMode = !_isEditMode);
-                        _guestNameFocus.requestFocus();
-                        AppToast.showInfo(
-                          context,
-                          _isEditMode
-                              ? 'Edit mode enabled: You can now modify guest details and click "Update".'
-                              : 'Edit mode closed.',
-                          title: _isEditMode ? 'Editing Active' : 'Edit Closed',
-                        );
-                      },
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: Text(
-                        _isEditMode ? 'Editing...' : 'Edit',
-                        style: const TextStyle(fontSize: 12),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black87,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: _isEditMode
+                              ? AppColors.navyDark.withValues(alpha: 0.1)
+                              : null,
+                          foregroundColor: Colors.black87,
+                          side: const BorderSide(color: Color(0xFFCCCCCC)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() => _isEditMode = !_isEditMode);
+                          _guestNameFocus.requestFocus();
+                          AppToast.showInfo(
+                            context,
+                            _isEditMode
+                                ? 'Edit mode enabled: You can now modify guest details and click "Update".'
+                                : 'Edit mode closed.',
+                            title:
+                                _isEditMode ? 'Editing Active' : 'Edit Closed',
+                          );
+                        },
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: Text(
+                          _isEditMode ? 'Editing...' : 'Edit',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      onPressed: _updateBooking,
-                      icon: const Icon(Icons.sync, size: 16),
-                      label: const Text(
-                        'Update',
-                        style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.black87,
+                          side: const BorderSide(color: Color(0xFFCCCCCC)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        onPressed: _updateBooking,
+                        icon: const Icon(Icons.sync, size: 18),
+                        label: const Text(
+                          'Update',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isConfirmed
-                            ? Colors.green
-                            : AppColors.navyDark,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                    SizedBox(
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isConfirmed
+                              ? Colors.green
+                              : AppColors.navyDark,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                        onPressed: _confirmGuestDetails,
+                        icon: Icon(
+                          _isConfirmed
+                              ? Icons.check_circle
+                              : Icons.verified_user_outlined,
+                          size: 18,
                         ),
-                      ),
-                      onPressed: _confirmGuestDetails,
-                      icon: Icon(
-                        _isConfirmed
-                            ? Icons.check_circle
-                            : Icons.verified_user_outlined,
-                        size: 16,
-                      ),
-                      label: Text(
-                        _isConfirmed
-                            ? 'Details Confirmed ✓'
-                            : 'Confirm Guest Details',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                        label: Text(
+                          _isConfirmed
+                              ? 'Details Confirmed ✓'
+                              : 'Confirm Guest Details',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -2795,11 +2981,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
+                  height: 44,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.navyDark,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
                       ),

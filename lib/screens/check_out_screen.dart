@@ -482,7 +482,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 450),
-              height: 38,
+              height: 44,
               child: TextField(
                 controller: _searchCtrl,
                 decoration: InputDecoration(
@@ -544,10 +544,10 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                               color: Colors.black87,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Container(
-                            height: 36,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: const Color(0xFFCCCCCC),
@@ -560,14 +560,14 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                                 isExpanded: true,
                                 hint: const Text(
                                   'Search Guest',
-                                  style: TextStyle(fontSize: 12),
+                                  style: TextStyle(fontSize: 13),
                                 ),
                                 items: _guests.map((g) {
                                   return DropdownMenuItem(
                                     value: g,
                                     child: Text(
                                       g.name,
-                                      style: const TextStyle(fontSize: 12),
+                                      style: const TextStyle(fontSize: 13),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   );
@@ -592,15 +592,15 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                           const Text(
                             'Identify by Room',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Container(
-                            height: 36,
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: const Color(0xFFCCCCCC),
@@ -613,7 +613,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                                 Text(
                                   '$_roomInputNumber',
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -625,7 +625,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                                           setState(() => _roomInputNumber++),
                                       child: const Icon(
                                         Icons.arrow_drop_up,
-                                        size: 14,
+                                        size: 16,
                                       ),
                                     ),
                                     InkWell(
@@ -637,7 +637,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                                       ),
                                       child: const Icon(
                                         Icons.arrow_drop_down,
-                                        size: 14,
+                                        size: 16,
                                       ),
                                     ),
                                   ],
@@ -656,8 +656,8 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                   children: [
                     Expanded(
                       child: Container(
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           border: Border.all(color: const Color(0xFFCCCCCC)),
                           borderRadius: BorderRadius.circular(6),
@@ -668,14 +668,14 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                             isExpanded: true,
                             hint: const Text(
                               'Select Guest from List',
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(fontSize: 13),
                             ),
                             items: _guests.map((g) {
                               return DropdownMenuItem(
                                 value: g,
                                 child: Text(
                                   g.name,
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(fontSize: 13),
                                 ),
                               );
                             }).toList(),
@@ -687,24 +687,26 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.navyDark,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                    SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.navyDark,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      onPressed: _findRoomGuest,
-                      child: const Text(
-                        'Find Room/Guest',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                        onPressed: _findRoomGuest,
+                        child: const Text(
+                          'Find Room/Guest',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1380,46 +1382,104 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                 const Text(
                   'Payment Method',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFCCCCCC)),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _paymentMethod,
-                      isExpanded: true,
-                      items: ['Credit Card', 'Cash', 'M-Pay'].map((m) {
-                        return DropdownMenuItem(
-                          value: m,
-                          child: Text(m, style: const TextStyle(fontSize: 12)),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _paymentMethod = val);
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    {'name': 'Credit Card', 'icon': Icons.credit_card},
+                    {'name': 'Cash', 'icon': Icons.payments_outlined},
+                    {'name': 'M-Pay', 'icon': Icons.phone_android},
+                  ].map((m) {
+                    final name = m['name'] as String;
+                    final icon = m['icon'] as IconData;
+                    final isSelected = _paymentMethod == name;
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _paymentMethod = name;
+                        });
                       },
-                    ),
-                  ),
+                      borderRadius: BorderRadius.circular(6),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.navyDark
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.navyDark
+                                : const Color(0xFFCCCCCC),
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.navyDark.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 16,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.navyDark,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 5),
+                              const Icon(
+                                Icons.check_circle,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 const Text(
                   'Payment Amount',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 6),
                 SizedBox(
-                  height: 38,
+                  height: 44,
                   child: TextField(
                     controller: _paymentAmountCtrl,
                     keyboardType: TextInputType.number,
@@ -1441,6 +1501,11 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                     },
                     decoration: InputDecoration(
                       prefixText: '₹ ',
+                      prefixStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.navyDark,
+                      ),
                       filled: true,
                       fillColor: _paymentAmountError != null
                           ? const Color(0xFFFFF2F0)
@@ -1464,13 +1529,15 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10,
+                        horizontal: 12,
+                        vertical: 12,
                       ),
                       isDense: true,
                     ),
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
+                      color: AppColors.navyDark,
                     ),
                   ),
                 ),
