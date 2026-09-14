@@ -196,8 +196,6 @@ class Booking {
   ];
 }
 
-// --- Date validation helpers ---
-
 bool isCheckoutAfterCheckin(DateTime checkIn, DateTime checkOut) =>
     checkOut.isAfter(checkIn);
 
@@ -208,7 +206,9 @@ int calculateNights(DateTime checkIn, DateTime checkOut) =>
     checkOut.difference(checkIn).inDays.clamp(1, 999);
 
 bool isRoomAvailable(int roomNo, DateTime checkIn, DateTime checkOut) =>
-    !Booking.mockBookings.any((b) =>
-        b.roomNumber == roomNo &&
-        b.checkIn.isBefore(checkOut) &&
-        b.checkOut.isAfter(checkIn));
+    !Booking.mockBookings.any(
+      (b) =>
+          b.roomNumber == roomNo &&
+          b.checkIn.isBefore(checkOut) &&
+          b.checkOut.isAfter(checkIn),
+    );

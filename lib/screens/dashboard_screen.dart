@@ -1,11 +1,14 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:hotel_booking/config/app_colors.dart';
 import '../models/booking.dart';
 import '../models/room.dart';
 import '../widgets/room_status_legend.dart';
 import '../widgets/room_tile.dart';
 import '../widgets/stat_card.dart';
-import 'package:hotel_booking/config/app_colors.dart';
+import '../config/app_toast.dart';
+import 'check_in_screen.dart';
+import 'check_out_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -23,8 +26,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _rooms = List.from(Room.allRooms);
   }
-
-  // ── Computed stats ─────────────────────────────────────────────────────────
 
   double _occupancyPct() {
     if (_rooms.isEmpty) return 0;
@@ -69,7 +70,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .fold(0.0, (sum, b) => sum + b.totalAmount);
   }
 
-  // For demo: show first 2 bookings when no real today match exists
   List<Booking> _vacatingBookings() {
     final today = DateTime.now();
     final matched = Booking.mockBookings
@@ -83,8 +83,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return matched.isNotEmpty ? matched : Booking.mockBookings.take(2).toList();
   }
 
-  // ── Room status actions ────────────────────────────────────────────────────
-
   void _setRoomStatus(Room room, RoomStatus status) {
     setState(() => room.status = status);
   }
@@ -95,8 +93,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (r.status == RoomStatus.dirty) r.status = RoomStatus.available;
       }
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All dirty rooms marked as available.')),
+    AppToast.showSuccess(
+      context,
+      'Housekeeping batch update: All dirty rooms have been serviced and marked as Available.',
+      title: 'Rooms Updated',
     );
   }
 
@@ -160,6 +160,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 _setRoomStatus(room, selected);
                 Navigator.pop(ctx);
+                AppToast.showSuccess(
+                  context,
+                  'Room ${room.number} status updated to ${selected.name.toUpperCase()}.',
+                  title: 'Status Updated',
+                );
               },
               child: const Text('Update'),
             ),
@@ -213,10 +218,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _navigateTo(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen)).then((
+      _,
+    ) {
+      setState(() {
+        _rooms = List.from(Room.allRooms);
+      });
+    });
   }
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
 
   String _formatDate(DateTime dt) {
     const months = [
@@ -242,15 +251,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '$wd, ${months[dt.month - 1]} ${dt.day}, ${dt.year}  |  $h:$m $ampm';
   }
 
-  // ── Section builders ───────────────────────────────────────────────────────
-
   Widget _buildTopBar() {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          // Logo
           Container(
             width: 36,
             height: 36,
@@ -284,7 +290,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(width: 24),
-          // Global search
+
           Expanded(
             child: SizedBox(
               height: 36,
@@ -348,17 +354,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'Guest Check-in',
         Icons.input_rounded,
         const Color(0xFF4DB6AC),
-        onTap: () {
-          //TODO: Navigate to check-in screen
-        },
+        onTap: () => _navigateTo(const CheckInScreen()),
       ),
       _NavItem(
         'Guest Check-Out',
         Icons.output_rounded,
         const Color(0xFFEF9A9A),
-        onTap: () {
-          //TODO: Navigate to check-out screen
-        },
+        onTap: () => _navigateTo(const CheckOutScreen()),
       ),
       _NavItem(
         'Reservations',
@@ -421,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           border: Border.all(color: const Color(0xFFE8E8E8)),
         ),
         child: Stack(
-          alignment: Alignment.center, // centres Column inside Stack
+          alignment: Alignment.center,
           children: [
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -603,7 +605,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // 2-row floor section with vertical rotated label — matches reference image
   Widget _buildFloorSection(
     String label,
     List<Room> rooms, {
@@ -619,7 +620,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Vertical "Floor 1 / Floor 2" label
         SizedBox(
           width: 36,
           height: 98,
@@ -638,7 +638,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
-        // Two rows of tiles wrapped in Expanded + SingleChildScrollView to prevent any overflow on smaller viewports
+
         Expanded(
           child: ScrollConfiguration(
             behavior: _MouseDragScrollBehavior(),
@@ -681,13 +681,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Mini floor map — Floor 1
             _buildMiniFloorSection('Floor 1', floor1),
             const SizedBox(height: 6),
-            // Mini floor map — Floor 2
+
             _buildMiniFloorSection('Floor 2', floor2),
             const SizedBox(height: 12),
-            // Donut chart — centred below the mini maps
+
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -743,7 +742,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Mini floor section — fits entirely within the 270px right panel
   Widget _buildMiniFloorSection(String label, List<Room> rooms) {
     final row1 = rooms.take(13).toList();
     final row2 = rooms.skip(13).toList();
@@ -768,7 +766,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
-        // Use Flexible so tiles never overflow the parent
+
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,7 +789,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // 14×14 room colour tile for the mini floor map
   Widget _miniTile(Room room) {
     return Container(
       width: 14,
@@ -869,7 +866,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             child: Row(
                               children: [
-                                // Colored left panel — bed icon centered
                                 Container(
                                   width: 72,
                                   decoration: const BoxDecoration(
@@ -905,7 +901,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ],
                                   ),
                                 ),
-                                // Info panel
+
                                 Expanded(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -1022,12 +1018,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _selectedQuickRoom!,
                           RoomStatus.available,
                         );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Room ${_selectedQuickRoom!.number} marked as available.',
-                            ),
-                          ),
+                        AppToast.showSuccess(
+                          context,
+                          'Housekeeping complete: Room ${_selectedQuickRoom!.number} is now Available and ready for check-in.',
+                          title: 'Room Ready',
                         );
                         setState(() => _selectedQuickRoom = null);
                       },
@@ -1073,8 +1067,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1097,7 +1089,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Row 1 — Nav tiles  +  Operational Overview
+
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1107,7 +1099,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Row 2 — Floor view  +  Occupancy mini-map + donut
+
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1117,7 +1109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Row 3 — Going to vacate  +  Quick status changer
+
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1136,8 +1128,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ── Private data holder for nav tiles ──────────────────────────────────────
-
 class _NavItem {
   final String label;
   final IconData icon;
@@ -1148,7 +1138,6 @@ class _NavItem {
   const _NavItem(this.label, this.icon, this.iconBg, {this.badge, this.onTap});
 }
 
-// Enables mouse-drag horizontal scrolling on Flutter web
 class _MouseDragScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
