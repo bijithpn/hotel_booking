@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hotel_booking/config/app_colors.dart';
 import '../models/booking.dart';
 import '../models/guest.dart';
 import '../models/room.dart';
+import '../routes/app_router.dart';
 import '../widgets/section_header.dart';
 import '../config/app_toast.dart';
 
@@ -458,7 +460,13 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.navyDark),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRoutes.dashboard);
+              }
+            },
             tooltip: 'Back to Dashboard',
           ),
           const SizedBox(width: 8),

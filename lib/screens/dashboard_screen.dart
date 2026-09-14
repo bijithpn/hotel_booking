@@ -7,8 +7,8 @@ import '../widgets/room_status_legend.dart';
 import '../widgets/room_tile.dart';
 import '../widgets/stat_card.dart';
 import '../config/app_toast.dart';
-import 'check_in_screen.dart';
-import 'check_out_screen.dart';
+import 'package:go_router/go_router.dart';
+import '../routes/app_router.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -217,14 +217,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _navigateTo(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen)).then((
-      _,
-    ) {
+  Future<void> _navigateTo(String routePath) async {
+    await context.push(routePath);
+    if (mounted) {
       setState(() {
         _rooms = List.from(Room.allRooms);
       });
-    });
+    }
   }
 
   String _formatDate(DateTime dt) {
@@ -354,13 +353,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'Guest Check-in',
         Icons.input_rounded,
         const Color(0xFF4DB6AC),
-        onTap: () => _navigateTo(const CheckInScreen()),
+        onTap: () => _navigateTo(AppRoutes.checkIn),
       ),
       _NavItem(
         'Guest Check-Out',
         Icons.output_rounded,
         const Color(0xFFEF9A9A),
-        onTap: () => _navigateTo(const CheckOutScreen()),
+        onTap: () => _navigateTo(AppRoutes.checkOut),
       ),
       _NavItem(
         'Reservations',

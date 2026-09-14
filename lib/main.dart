@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hotel_booking/config/app_colors.dart';
-import 'screens/dashboard_screen.dart';
+import 'routes/app_router.dart';
 
 void main() {
   runApp(const HotelBookingApp());
@@ -11,7 +11,8 @@ class HotelBookingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
+      routerConfig: appRouter,
       title: 'Raintech Hotel',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -51,7 +52,6 @@ class HotelBookingApp extends StatelessWidget {
           isDense: true,
         ),
       ),
-      home: const DashboardScreen(),
     );
   }
 }
