@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hotel_booking/config/app_colors.dart';
-import '../models/booking.dart';
-import '../models/guest.dart';
-import '../models/room.dart';
-import '../routes/app_router.dart';
-import '../widgets/section_header.dart';
-import '../config/app_toast.dart';
+import 'package:hotel_booking/routes/app_routes.dart';
+import '../../cubits/check_in/check_in_cubit.dart';
+import '../../models/booking.dart';
+import '../../models/guest.dart';
+import '../../widgets/section_header.dart';
+import '../../config/app_toast.dart';
 
 class CheckInScreen extends StatefulWidget {
   const CheckInScreen({super.key});
@@ -16,10 +17,7 @@ class CheckInScreen extends StatefulWidget {
 }
 
 class _CheckInScreenState extends State<CheckInScreen> {
-  late List<Booking> _bookings;
-  late List<Guest> _guests;
-  Booking? _selectedBooking;
-  Guest? _selectedGuest;
+  late final CheckInCubit _cubit;
 
   final TextEditingController _searchCtrl = TextEditingController();
   final TextEditingController _rentCtrl = TextEditingController();
@@ -29,31 +27,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
   final TextEditingController _updateAdultsKidsCtrl = TextEditingController();
   final FocusNode _guestNameFocus = FocusNode();
 
-  int _adults = 2;
-  int _kids = 0;
-  DateTime? _checkoutDate;
-  String? _idProofName;
-  bool _isFileUploaded = false;
-  bool _isConfirmed = false;
-  bool _isEditMode = false;
   final double _extraCharges = 200.0;
-  String _filterQuery = '';
-
-  String? _rentError;
-  String? _gstError;
-  String? _tendantError;
-  String? _guestNameError;
-  String? _dateError;
-  String? _validationSummary;
 
   @override
   void initState() {
     super.initState();
-    _bookings = List.from(Booking.mockBookings);
-    _guests = List.from(Guest.mockGuests);
-    if (_bookings.isNotEmpty) {
-      _selectBooking(_bookings.first);
-    }
+    _cubit = CheckInCubit();
+    _syncControllers(_cubit.state);
   }
 
   @override
@@ -65,115 +45,28 @@ class _CheckInScreenState extends State<CheckInScreen> {
     _guestNameCtrl.dispose();
     _updateAdultsKidsCtrl.dispose();
     _guestNameFocus.dispose();
+    _cubit.close();
     super.dispose();
   }
 
-  void _clearErrors() {
-    setState(() {
-      _rentError = null;
-      _gstError = null;
-      _tendantError = null;
-      _guestNameError = null;
-      _dateError = null;
-      _validationSummary = null;
-    });
+  void _syncControllers(CheckInState s) {
+    if (s.selectedBooking != null) {
+      _rentCtrl.text = s.selectedBooking!.rentPerNight.toStringAsFixed(2);
+      _gstCtrl.text = s.selectedBooking!.gstAmount.toStringAsFixed(2);
+      _guestNameCtrl.text = s.selectedBooking!.guestName;
+      _tendantNameCtrl.text = s.selectedBooking!.guestName;
+    } else {
+      _rentCtrl.text = '';
+      _gstCtrl.text = '';
+      _guestNameCtrl.text = '';
+      _tendantNameCtrl.text = '';
+    }
+    _updateAdultsKidsCtrl.text = '${s.adults} Adults, ${s.kids} Kids';
   }
 
-  void _validateFieldRealtime() {
-    setState(() {
-      if (_guestNameCtrl.text.trim().isNotEmpty) _guestNameError = null;
-      final rent = double.tryParse(_rentCtrl.text.trim());
-      if (rent != null && rent > 0) _rentError = null;
-      final gst = double.tryParse(_gstCtrl.text.trim());
-      if (gst != null && gst >= 0) _gstError = null;
-      if (_tendantNameCtrl.text.trim().isNotEmpty) _tendantError = null;
-
-      if (_guestNameError == null &&
-          _rentError == null &&
-          _gstError == null &&
-          _tendantError == null &&
-          _dateError == null) {
-        _validationSummary = null;
-      }
-    });
-  }
-
-  bool _validateFields() {
-    _clearErrors();
-    final List<String> errors = [];
-
-    if (_guestNameCtrl.text.trim().isEmpty) {
-      _guestNameError = 'Guest name is required';
-      errors.add('Guest name is required');
-    }
-
-    final rent = double.tryParse(_rentCtrl.text.trim());
-    if (rent == null || rent <= 0) {
-      _rentError = 'Enter valid rent (> 0)';
-      errors.add('Valid rent amount is required');
-    }
-
-    final gst = double.tryParse(_gstCtrl.text.trim());
-    if (gst == null || gst < 0) {
-      _gstError = 'Enter valid GST (>= 0)';
-      errors.add('Valid GST percentage is required');
-    }
-
-    if (_tendantNameCtrl.text.trim().isEmpty) {
-      _tendantError = 'Tendant name is required';
-      errors.add('Tendant name is required');
-    }
-
-    if (_checkoutDate == null) {
-      _dateError = 'Select checkout date';
-      errors.add('Checkout date must be selected');
-    } else if (_selectedBooking != null &&
-        !isCheckoutAfterCheckin(_selectedBooking!.checkIn, _checkoutDate!)) {
-      _dateError = 'Checkout must be after check-in';
-      errors.add('Checkout date must be after check-in date');
-    }
-
-    if (errors.isNotEmpty) {
-      setState(() {
-        _validationSummary = errors.first;
-      });
-      return false;
-    }
-
-    setState(() {
-      _validationSummary = null;
-    });
-    return true;
-  }
-
-  void _selectBooking(Booking b) {
-    setState(() {
-      _selectedBooking = b;
-      _rentCtrl.text = b.rentPerNight.toStringAsFixed(2);
-      _gstCtrl.text = b.gstAmount.toStringAsFixed(2);
-      _guestNameCtrl.text = b.guestName;
-      _tendantNameCtrl.text = b.guestName;
-      _adults = b.adults;
-      _kids = b.kids;
-      _updateAdultsKidsCtrl.text = '${b.adults} Adults, ${b.kids} Kids';
-      _checkoutDate = b.checkOut;
-      _idProofName =
-          b.idProofName ??
-          '${b.guestName.toLowerCase().replaceAll(' ', '')}.pdf';
-      _isFileUploaded = true;
-      _isConfirmed = false;
-      _isEditMode = false;
-      _clearErrors();
-
-      final matching = _guests.where(
-        (g) => g.name.toLowerCase() == b.guestName.toLowerCase(),
-      );
-      if (matching.isNotEmpty) {
-        _selectedGuest = matching.first;
-      } else {
-        _selectedGuest = _guests.first;
-      }
-    });
+  void _onSelectBooking(Booking b) {
+    _cubit.selectBooking(b);
+    _syncControllers(_cubit.state);
   }
 
   String _formatDate(DateTime dt) {
@@ -184,9 +77,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _confirmGuestDetails() {
-    if (_selectedBooking == null) return;
+    if (_cubit.state.selectedBooking == null) return;
 
-    if (!_validateFields()) {
+    final valid = _cubit.validateFields(
+      guestName: _guestNameCtrl.text,
+      rentText: _rentCtrl.text,
+      gstText: _gstCtrl.text,
+      tendantName: _tendantNameCtrl.text,
+    );
+
+    if (!valid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please correct the validation errors in the form.'),
@@ -196,7 +96,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return;
     }
 
-    if (_adults < 1) {
+    if (_cubit.state.adults < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('At least 1 adult is required for check-in.'),
@@ -206,14 +106,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return;
     }
 
-    setState(() {
-      _isConfirmed = true;
-    });
+    _cubit.setConfirmed(true);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Guest details confirmed for Room ${_selectedBooking!.roomNumber}! Ready for check-in.',
+          'Guest details confirmed for Room ${_cubit.state.selectedBooking!.roomNumber}! Ready for check-in.',
         ),
         backgroundColor: Colors.green,
       ),
@@ -221,8 +119,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _updateBooking() {
-    if (_selectedBooking == null) return;
-    if (!_validateFields()) {
+    if (_cubit.state.selectedBooking == null) return;
+
+    final ok = _cubit.updateBooking(
+      guestName: _guestNameCtrl.text,
+      rentText: _rentCtrl.text,
+      gstText: _gstCtrl.text,
+      tendantName: _tendantNameCtrl.text,
+    );
+
+    if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Cannot update: please fix invalid field values.'),
@@ -232,31 +138,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return;
     }
 
-    setState(() {
-      final index = _bookings.indexWhere((b) => b.id == _selectedBooking!.id);
-      if (index != -1) {
-        final parsedRent = double.parse(_rentCtrl.text.trim());
-        final parsedGst = double.parse(_gstCtrl.text.trim());
-        final updated = Booking(
-          id: _selectedBooking!.id,
-          guestName: _guestNameCtrl.text.trim(),
-          phone: _selectedBooking!.phone,
-          roomNumber: _selectedBooking!.roomNumber,
-          rentPerNight: parsedRent,
-          gstAmount: parsedGst,
-          checkIn: _selectedBooking!.checkIn,
-          checkOut: _checkoutDate ?? _selectedBooking!.checkOut,
-          adults: _adults,
-          kids: _kids,
-          seniorCitizens: _selectedBooking!.seniorCitizens,
-          idProofName: _idProofName,
-          additionalCharges: _selectedBooking!.additionalCharges,
-        );
-        _bookings[index] = updated;
-        _selectedBooking = updated;
-        _isEditMode = false;
-      }
-    });
+    _syncControllers(_cubit.state);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -286,30 +168,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ),
             onPressed: () {
               Navigator.pop(ctx);
-              setState(() {
-                _bookings.removeWhere((item) => item.id == b.id);
-                if (_selectedBooking?.id == b.id) {
-                  _selectedBooking = _bookings.isNotEmpty
-                      ? _bookings.first
-                      : null;
-                  if (_selectedBooking != null) {
-                    _selectBooking(_selectedBooking!);
-                  } else {
-                    _rentCtrl.text = '';
-                    _gstCtrl.text = '';
-                    _guestNameCtrl.text = '';
-                    _tendantNameCtrl.text = '';
-                    _adults = 1;
-                    _kids = 0;
-                    _updateAdultsKidsCtrl.text = '1 Adults, 0 Kids';
-                    _checkoutDate = null;
-                    _idProofName = null;
-                    _isFileUploaded = false;
-                    _isConfirmed = false;
-                    _isEditMode = false;
-                  }
-                }
-              });
+              _cubit.deleteBooking(b);
+              _syncControllers(_cubit.state);
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(const SnackBar(content: Text('Booking deleted.')));
@@ -322,8 +182,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _completeCheckin() {
-    if (_selectedBooking == null) return;
-    if (!_isConfirmed) {
+    final selectedBooking = _cubit.state.selectedBooking;
+    if (selectedBooking == null) return;
+    if (!_cubit.state.isConfirmed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -335,12 +196,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return;
     }
 
-    final room = Room.allRooms.where(
-      (r) => r.number == _selectedBooking!.roomNumber,
-    );
-    if (room.isNotEmpty) {
-      room.first.status = RoomStatus.occupied;
-    }
+    _cubit.markRoomOccupied(selectedBooking.roomNumber);
 
     showDialog(
       context: context,
@@ -356,14 +212,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Guest: ${_selectedBooking!.guestName}'),
+            Text('Guest: ${selectedBooking.guestName}'),
             const SizedBox(height: 4),
-            Text('Room: ${_selectedBooking!.roomNumber} (Status: Occupied)'),
+            Text('Room: ${selectedBooking.roomNumber} (Status: Occupied)'),
             const SizedBox(height: 4),
-            Text('Checkout Date: ${_formatDate(_selectedBooking!.checkOut)}'),
+            Text('Checkout Date: ${_formatDate(selectedBooking.checkOut)}'),
             const SizedBox(height: 4),
             Text(
-              'Total Amount: ₹${_selectedBooking!.totalAmount.toStringAsFixed(2)}',
+              'Total Amount: ₹${selectedBooking.totalAmount.toStringAsFixed(2)}',
             ),
           ],
         ),
@@ -567,13 +423,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _setUploadedFile(String fileName) {
-    setState(() {
-      _idProofName = fileName;
-      _isFileUploaded = true;
-      if (_selectedBooking != null) {
-        _selectedBooking!.idProofName = fileName;
-      }
-    });
+    _cubit.setUploadedFile(fileName);
     AppToast.showSuccess(
       context,
       'Identity verification document "$fileName" uploaded successfully.',
@@ -785,15 +635,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
                   if (nameError == null && phoneError == null) {
                     final newGuest = Guest(
-                      id: 'G00${_guests.length + 1}',
+                      id: 'G00${_cubit.state.guests.length + 1}',
                       name: nameCtrl.text.trim(),
                       phone: phoneCtrl.text.trim(),
                     );
-                    setState(() {
-                      _guests.add(newGuest);
-                      _selectedGuest = newGuest;
-                      _guestNameCtrl.text = newGuest.name;
-                    });
+                    _cubit.addGuest(newGuest);
+                    _guestNameCtrl.text = newGuest.name;
                     Navigator.pop(ctx);
                     AppToast.showSuccess(
                       context,
@@ -811,25 +658,24 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _showGetDataDialog() {
-    if (_selectedBooking == null) return;
+    final selectedBooking = _cubit.state.selectedBooking;
+    if (selectedBooking == null) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Booking Data: ${_selectedBooking!.id}'),
+        title: Text('Booking Data: ${selectedBooking.id}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Guest: ${_selectedBooking!.guestName}'),
-            Text('Room: ${_selectedBooking!.roomNumber}'),
-            Text('Check-in: ${_formatDate(_selectedBooking!.checkIn)}'),
-            Text('Check-out: ${_formatDate(_selectedBooking!.checkOut)}'),
-            Text('Rent/Night: ₹${_selectedBooking!.rentPerNight}'),
-            Text('GST: ₹${_selectedBooking!.gstAmount}'),
-            Text('Total: ₹${_selectedBooking!.totalAmount}'),
-            Text(
-              'ID Proof: ${_selectedBooking!.idProofName ?? "Not attached"}',
-            ),
+            Text('Guest: ${selectedBooking.guestName}'),
+            Text('Room: ${selectedBooking.roomNumber}'),
+            Text('Check-in: ${_formatDate(selectedBooking.checkIn)}'),
+            Text('Check-out: ${_formatDate(selectedBooking.checkOut)}'),
+            Text('Rent/Night: ₹${selectedBooking.rentPerNight}'),
+            Text('GST: ₹${selectedBooking.gstAmount}'),
+            Text('Total: ₹${selectedBooking.totalAmount}'),
+            Text('ID Proof: ${selectedBooking.idProofName ?? "Not attached"}'),
           ],
         ),
         actions: [
@@ -846,7 +692,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _showMPayDialog() {
-    final total = _selectedBooking?.totalAmount ?? 2500.0;
+    final total = _cubit.state.selectedBooking?.totalAmount ?? 2500.0;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -909,7 +755,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _showPrintPreviewDialog() {
-    if (_selectedBooking == null) return;
+    final selectedBooking = _cubit.state.selectedBooking;
+    if (selectedBooking == null) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -939,11 +786,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 ),
               ),
               const Divider(),
-              Text('Invoice Ref: INV-${_selectedBooking!.id}'),
-              Text('Guest: ${_selectedBooking!.guestName}'),
-              Text('Room: ${_selectedBooking!.roomNumber}'),
+              Text('Invoice Ref: INV-${selectedBooking.id}'),
+              Text('Guest: ${selectedBooking.guestName}'),
+              Text('Room: ${selectedBooking.roomNumber}'),
               Text(
-                'Duration: ${_formatDate(_selectedBooking!.checkIn)} to ${_formatDate(_selectedBooking!.checkOut)}',
+                'Duration: ${_formatDate(selectedBooking.checkIn)} to ${_formatDate(selectedBooking.checkOut)}',
               ),
               const Divider(),
               Row(
@@ -954,7 +801,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    '₹${_selectedBooking!.totalAmount.toStringAsFixed(2)}',
+                    '₹${selectedBooking.totalAmount.toStringAsFixed(2)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -977,7 +824,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               Navigator.pop(ctx);
               AppToast.showInfo(
                 context,
-                'Invoice INV-${_selectedBooking!.id} for ${_selectedBooking!.guestName} sent to system printer.',
+                'Invoice INV-${selectedBooking.id} for ${selectedBooking.guestName} sent to system printer.',
                 title: 'Print Queued',
               );
             },
@@ -988,7 +835,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _showRegistrationCardDialog() {
-    if (_selectedBooking == null) return;
+    final selectedBooking = _cubit.state.selectedBooking;
+    if (selectedBooking == null) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1000,16 +848,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Guest Name: ${_selectedBooking!.guestName}',
+                'Guest Name: ${selectedBooking.guestName}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              Text('Phone: ${_selectedBooking!.phone}'),
-              Text('Room Number: ${_selectedBooking!.roomNumber}'),
+              Text('Phone: ${selectedBooking.phone}'),
+              Text('Room Number: ${selectedBooking.roomNumber}'),
               Text(
-                'Check-in: ${_formatDate(_selectedBooking!.checkIn)} | Check-out: ${_formatDate(_selectedBooking!.checkOut)}',
+                'Check-in: ${_formatDate(selectedBooking.checkIn)} | Check-out: ${_formatDate(selectedBooking.checkOut)}',
               ),
               Text(
-                'Adults: ${_selectedBooking!.adults} | Children: ${_selectedBooking!.kids}',
+                'Adults: ${selectedBooking.adults} | Children: ${selectedBooking.kids}',
               ),
               const SizedBox(height: 12),
               const Text(
@@ -1042,7 +890,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               Navigator.pop(ctx);
               AppToast.showInfo(
                 context,
-                'Registration card for ${_selectedBooking!.guestName} (Room ${_selectedBooking!.roomNumber}) sent to printer.',
+                'Registration card for ${selectedBooking.guestName} (Room ${selectedBooking.roomNumber}) sent to printer.',
                 title: 'Print Queued',
               );
             },
@@ -1054,15 +902,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _downloadFolio() {
-    if (_selectedBooking == null) return;
+    final selectedBooking = _cubit.state.selectedBooking;
+    if (selectedBooking == null) return;
     AppToast.showSuccess(
       context,
-      'Guest Folio generated and downloaded: Folio_${_selectedBooking!.id}_Room${_selectedBooking!.roomNumber}.pdf',
+      'Guest Folio generated and downloaded: Folio_${selectedBooking.id}_Room${selectedBooking.roomNumber}.pdf',
       title: 'Download Complete',
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(CheckInState state) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -1096,7 +945,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               child: TextField(
                 controller: _searchCtrl,
                 onChanged: (val) =>
-                    setState(() => _filterQuery = val.trim().toLowerCase()),
+                    _cubit.setFilterQuery(val.trim().toLowerCase()),
                 decoration: InputDecoration(
                   hintText: 'Search Booking ID / Guest Name',
                   hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
@@ -1124,7 +973,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
-  Widget _buildPanel1() {
+  Widget _buildPanel1(CheckInState state) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -1145,7 +994,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   height: 44,
                   child: TextField(
                     onChanged: (val) =>
-                        setState(() => _filterQuery = val.trim().toLowerCase()),
+                        _cubit.setFilterQuery(val.trim().toLowerCase()),
                     decoration: InputDecoration(
                       hintText: 'Search Booking ID / Guest Name',
                       hintStyle: const TextStyle(
@@ -1191,8 +1040,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<Guest>(
-                            value: _guests.contains(_selectedGuest)
-                                ? _selectedGuest
+                            value: state.guests.contains(state.selectedGuest)
+                                ? state.selectedGuest
                                 : null,
                             isExpanded: true,
                             isDense: true,
@@ -1200,7 +1049,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               'Name/Phone number',
                               style: TextStyle(fontSize: 13),
                             ),
-                            items: _guests.map((g) {
+                            items: state.guests.map((g) {
                               return DropdownMenuItem<Guest>(
                                 value: g,
                                 child: Text(
@@ -1211,19 +1060,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               );
                             }).toList(),
                             onChanged: (g) {
-                              if (g != null) {
-                                setState(() {
-                                  _selectedGuest = g;
-                                  _guestNameCtrl.text = g.name;
-                                  final matchingBooking = _bookings.where(
-                                    (b) =>
-                                        b.guestName.toLowerCase() ==
-                                        g.name.toLowerCase(),
-                                  );
-                                  if (matchingBooking.isNotEmpty) {
-                                    _selectBooking(matchingBooking.first);
-                                  }
-                                });
+                              if (g == null) return;
+                              final matched = _cubit.selectGuest(g);
+                              if (matched) {
+                                _syncControllers(_cubit.state);
+                              } else {
+                                _guestNameCtrl.text = g.name;
                               }
                             },
                           ),
@@ -1237,9 +1079,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1976D2),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -1266,8 +1106,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: _bookings.take(6).map((b) {
-                    final isSelected = _selectedBooking?.id == b.id;
+                  children: state.bookings.take(6).map((b) {
+                    final isSelected = state.selectedBooking?.id == b.id;
                     return ChoiceChip(
                       label: Text('Room ${b.roomNumber}'),
                       selected: isSelected,
@@ -1286,7 +1126,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               : Colors.grey.shade300,
                         ),
                       ),
-                      onSelected: (_) => _selectBooking(b),
+                      onSelected: (_) => _onSelectBooking(b),
                     );
                   }).toList(),
                 ),
@@ -1303,8 +1143,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _selectedBooking != null
-                                ? _formatDate(_selectedBooking!.checkIn)
+                            state.selectedBooking != null
+                                ? _formatDate(state.selectedBooking!.checkIn)
                                 : '02/04/2026',
                             style: const TextStyle(
                               fontSize: 13,
@@ -1352,7 +1192,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
-  Widget _buildPanel2() {
+  Widget _buildPanel2(CheckInState state) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -1369,7 +1209,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_validationSummary != null)
+                if (state.validationSummary != null)
                   Container(
                     margin: const EdgeInsets.only(bottom: 14),
                     padding: const EdgeInsets.symmetric(
@@ -1394,7 +1234,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Validation Error: $_validationSummary',
+                            'Validation Error: ${state.validationSummary}',
                             style: const TextStyle(
                               color: Color(0xFFCF1322),
                               fontSize: 12,
@@ -1403,8 +1243,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                         ),
                         InkWell(
-                          onTap: () =>
-                              setState(() => _validationSummary = null),
+                          onTap: _cubit.dismissValidationSummary,
                           child: const Icon(
                             Icons.close,
                             size: 16,
@@ -1440,9 +1279,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           Container(
                             height: 44,
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
@@ -1464,7 +1301,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${_selectedBooking?.roomNumber ?? 101}',
+                                  '${state.selectedBooking?.roomNumber ?? 101}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -1523,25 +1360,30 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               controller: _rentCtrl,
                               keyboardType: TextInputType.number,
                               textAlignVertical: TextAlignVertical.center,
-                              onChanged: (_) => _validateFieldRealtime(),
+                              onChanged: (_) => _cubit.validateFieldRealtime(
+                                guestName: _guestNameCtrl.text,
+                                rentText: _rentCtrl.text,
+                                gstText: _gstCtrl.text,
+                                tendantName: _tendantNameCtrl.text,
+                              ),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: _rentError != null
+                                fillColor: state.rentError != null
                                     ? const Color(0xFFFFF2F0)
                                     : Colors.white,
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _rentError != null
+                                    color: state.rentError != null
                                         ? Colors.red.shade700
                                         : const Color(0xFFCCCCCC),
-                                    width: _rentError != null ? 1.5 : 1.0,
+                                    width: state.rentError != null ? 1.5 : 1.0,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _rentError != null
+                                    color: state.rentError != null
                                         ? Colors.red.shade700
                                         : AppColors.navyDark,
                                     width: 1.5,
@@ -1589,10 +1431,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               controller: _gstCtrl,
                               keyboardType: TextInputType.number,
                               textAlignVertical: TextAlignVertical.center,
-                              onChanged: (_) => _validateFieldRealtime(),
+                              onChanged: (_) => _cubit.validateFieldRealtime(
+                                guestName: _guestNameCtrl.text,
+                                rentText: _rentCtrl.text,
+                                gstText: _gstCtrl.text,
+                                tendantName: _tendantNameCtrl.text,
+                              ),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: _gstError != null
+                                fillColor: state.gstError != null
                                     ? const Color(0xFFFFF2F0)
                                     : Colors.white,
                                 suffixIconConstraints: const BoxConstraints(
@@ -1628,16 +1475,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _gstError != null
+                                    color: state.gstError != null
                                         ? Colors.red.shade700
                                         : const Color(0xFFCCCCCC),
-                                    width: _gstError != null ? 1.5 : 1.0,
+                                    width: state.gstError != null ? 1.5 : 1.0,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _gstError != null
+                                    color: state.gstError != null
                                         ? Colors.red.shade700
                                         : AppColors.navyDark,
                                     width: 1.5,
@@ -1686,25 +1533,32 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             child: TextField(
                               controller: _tendantNameCtrl,
                               textAlignVertical: TextAlignVertical.center,
-                              onChanged: (_) => _validateFieldRealtime(),
+                              onChanged: (_) => _cubit.validateFieldRealtime(
+                                guestName: _guestNameCtrl.text,
+                                rentText: _rentCtrl.text,
+                                gstText: _gstCtrl.text,
+                                tendantName: _tendantNameCtrl.text,
+                              ),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: _tendantError != null
+                                fillColor: state.tendantError != null
                                     ? const Color(0xFFFFF2F0)
                                     : Colors.white,
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _tendantError != null
+                                    color: state.tendantError != null
                                         ? Colors.red.shade700
                                         : const Color(0xFFCCCCCC),
-                                    width: _tendantError != null ? 1.5 : 1.0,
+                                    width: state.tendantError != null
+                                        ? 1.5
+                                        : 1.0,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _tendantError != null
+                                    color: state.tendantError != null
                                         ? Colors.red.shade700
                                         : AppColors.navyDark,
                                     width: 1.5,
@@ -1748,9 +1602,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           const SizedBox(height: 6),
                           Container(
                             height: 44,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(6),
@@ -1760,37 +1612,37 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<int>(
-                                value: _adults,
+                                value: state.adults,
                                 isExpanded: true,
                                 isDense: true,
                                 icon: const Icon(
                                   Icons.arrow_drop_down,
                                   color: Colors.black54,
                                 ),
-                                items: ({for (int i = 1; i <= 20; i++) i, _adults}
-                                        .toList()
-                                      ..sort())
-                                    .map(
-                                      (n) => DropdownMenuItem(
-                                        value: n,
-                                        child: Text(
-                                          n.toString().padLeft(2, '0'),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87,
+                                items:
+                                    ({
+                                          for (int i = 1; i <= 20; i++) i,
+                                          state.adults,
+                                        }.toList()..sort())
+                                        .map(
+                                          (n) => DropdownMenuItem(
+                                            value: n,
+                                            child: Text(
+                                              n.toString().padLeft(2, '0'),
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                        )
+                                        .toList(),
                                 onChanged: (val) {
                                   if (val != null) {
-                                    setState(() {
-                                      _adults = val;
-                                      _updateAdultsKidsCtrl.text =
-                                          '$_adults Adults, $_kids Kids';
-                                    });
+                                    _cubit.setAdults(val);
+                                    _updateAdultsKidsCtrl.text =
+                                        '$val Adults, ${state.kids} Kids';
                                   }
                                 },
                               ),
@@ -1822,9 +1674,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           const SizedBox(height: 6),
                           Container(
                             height: 44,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(6),
@@ -1834,37 +1684,37 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<int>(
-                                value: _kids,
+                                value: state.kids,
                                 isExpanded: true,
                                 isDense: true,
                                 icon: const Icon(
                                   Icons.arrow_drop_down,
                                   color: Colors.black54,
                                 ),
-                                items: ({for (int i = 0; i <= 20; i++) i, _kids}
-                                        .toList()
-                                      ..sort())
-                                    .map(
-                                      (n) => DropdownMenuItem(
-                                        value: n,
-                                        child: Text(
-                                          n.toString().padLeft(2, '0'),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87,
+                                items:
+                                    ({
+                                          for (int i = 0; i <= 20; i++) i,
+                                          state.kids,
+                                        }.toList()..sort())
+                                        .map(
+                                          (n) => DropdownMenuItem(
+                                            value: n,
+                                            child: Text(
+                                              n.toString().padLeft(2, '0'),
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                        )
+                                        .toList(),
                                 onChanged: (val) {
                                   if (val != null) {
-                                    setState(() {
-                                      _kids = val;
-                                      _updateAdultsKidsCtrl.text =
-                                          '$_adults Adults, $_kids Kids';
-                                    });
+                                    _cubit.setKids(val);
+                                    _updateAdultsKidsCtrl.text =
+                                        '${state.adults} Adults, $val Kids';
                                   }
                                 },
                               ),
@@ -1904,15 +1754,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate:
-                                    _checkoutDate ?? DateTime(2026, 4, 2),
+                                    state.checkoutDate ?? DateTime(2026, 4, 2),
                                 firstDate: DateTime(2026, 1, 1),
                                 lastDate: DateTime(2030, 12, 31),
                               );
                               if (picked != null) {
-                                setState(() {
-                                    _checkoutDate = picked;
-                                  _dateError = null;
-                                });
+                                _cubit.setCheckoutDate(picked);
                               }
                             },
                             child: Container(
@@ -1921,14 +1768,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: _dateError != null
+                                color: state.dateError != null
                                     ? const Color(0xFFFFF2F0)
                                     : Colors.white,
                                 border: Border.all(
-                                  color: _dateError != null
+                                  color: state.dateError != null
                                       ? Colors.red.shade700
                                       : const Color(0xFFCCCCCC),
-                                  width: _dateError != null ? 1.5 : 1.0,
+                                  width: state.dateError != null ? 1.5 : 1.0,
                                 ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
@@ -1937,8 +1784,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    _checkoutDate != null
-                                        ? _formatDate(_checkoutDate!)
+                                    state.checkoutDate != null
+                                        ? _formatDate(state.checkoutDate!)
                                         : 'Select Date',
                                     style: const TextStyle(
                                       fontSize: 13,
@@ -1979,11 +1826,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: _isFileUploaded
+                                color: state.isFileUploaded
                                     ? const Color(0xFFF0FDF4)
                                     : const Color(0xFFFAFAFA),
                                 border: Border.all(
-                                  color: _isFileUploaded
+                                  color: state.isFileUploaded
                                       ? Colors.green.shade600
                                       : const Color(0xFFCCCCCC),
                                 ),
@@ -1993,24 +1840,24 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    _isFileUploaded
+                                    state.isFileUploaded
                                         ? Icons.check_circle
                                         : Icons.upload_file,
                                     size: 18,
-                                    color: _isFileUploaded
+                                    color: state.isFileUploaded
                                         ? Colors.green.shade700
                                         : AppColors.navyDark,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      _isFileUploaded
+                                      state.isFileUploaded
                                           ? 'File Uploaded'
                                           : 'Click to Upload',
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: _isFileUploaded
+                                        color: state.isFileUploaded
                                             ? Colors.green.shade800
                                             : AppColors.navyDark,
                                       ),
@@ -2058,11 +1905,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: _isFileUploaded
+                                color: state.isFileUploaded
                                     ? const Color(0xFFF6FFED)
                                     : Colors.white,
                                 border: Border.all(
-                                  color: _isFileUploaded
+                                  color: state.isFileUploaded
                                       ? Colors.green
                                       : const Color(0xFFCCCCCC),
                                 ),
@@ -2074,13 +1921,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      _idProofName ?? 'Upload ID proof...',
+                                      state.idProofName ?? 'Upload ID proof...',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: _isFileUploaded
+                                        color: state.isFileUploaded
                                             ? Colors.green.shade900
                                             : Colors.black87,
-                                        fontWeight: _isFileUploaded
+                                        fontWeight: state.isFileUploaded
                                             ? FontWeight.bold
                                             : FontWeight.w500,
                                       ),
@@ -2088,11 +1935,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                     ),
                                   ),
                                   Icon(
-                                    _isFileUploaded
+                                    state.isFileUploaded
                                         ? Icons.verified
                                         : Icons.description_outlined,
                                     size: 18,
-                                    color: _isFileUploaded
+                                    color: state.isFileUploaded
                                         ? Colors.green
                                         : Colors.black54,
                                   ),
@@ -2118,9 +1965,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           const SizedBox(height: 6),
                           Container(
                             height: 44,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(6),
@@ -2130,32 +1975,35 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<int>(
-                                value: (_adults + _kids).clamp(1, 30),
+                                value: (state.adults + state.kids).clamp(1, 30),
                                 isExpanded: true,
                                 isDense: true,
                                 icon: const Icon(
                                   Icons.arrow_drop_down,
                                   color: Colors.black54,
                                 ),
-                                items: ({
-                                  for (int i = 1; i <= 30; i++) i,
-                                  (_adults + _kids).clamp(1, 30),
-                                }.toList()
-                                      ..sort())
-                                    .map(
-                                      (n) => DropdownMenuItem(
-                                        value: n,
-                                        child: Text(
-                                          n.toString().padLeft(2, '0'),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87,
+                                items:
+                                    ({
+                                          for (int i = 1; i <= 30; i++) i,
+                                          (state.adults + state.kids).clamp(
+                                            1,
+                                            30,
                                           ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                        }.toList()..sort())
+                                        .map(
+                                          (n) => DropdownMenuItem(
+                                            value: n,
+                                            child: Text(
+                                              n.toString().padLeft(2, '0'),
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (val) {},
                               ),
                             ),
@@ -2242,25 +2090,32 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               controller: _guestNameCtrl,
                               focusNode: _guestNameFocus,
                               textAlignVertical: TextAlignVertical.center,
-                              onChanged: (_) => _validateFieldRealtime(),
+                              onChanged: (_) => _cubit.validateFieldRealtime(
+                                guestName: _guestNameCtrl.text,
+                                rentText: _rentCtrl.text,
+                                gstText: _gstCtrl.text,
+                                tendantName: _tendantNameCtrl.text,
+                              ),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: _guestNameError != null
+                                fillColor: state.guestNameError != null
                                     ? const Color(0xFFFFF2F0)
                                     : Colors.white,
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _guestNameError != null
+                                    color: state.guestNameError != null
                                         ? Colors.red.shade700
                                         : const Color(0xFFCCCCCC),
-                                    width: _guestNameError != null ? 1.5 : 1.0,
+                                    width: state.guestNameError != null
+                                        ? 1.5
+                                        : 1.0,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6),
                                   borderSide: BorderSide(
-                                    color: _guestNameError != null
+                                    color: state.guestNameError != null
                                         ? Colors.red.shade700
                                         : AppColors.navyDark,
                                     width: 1.5,
@@ -2317,8 +2172,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
                                   mainAxisAlignment:
@@ -2398,7 +2252,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                       ),
                                     ),
                                     Text(
-                                      '₹${(_selectedBooking != null ? _selectedBooking!.gstAmount : 112).toStringAsFixed(2)}',
+                                      '₹${(state.selectedBooking != null ? state.selectedBooking!.gstAmount : 112).toStringAsFixed(2)}',
                                       style: const TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w600,
@@ -2431,8 +2285,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        onPressed: _selectedBooking != null
-                            ? () => _deleteBooking(_selectedBooking!)
+                        onPressed: state.selectedBooking != null
+                            ? () => _deleteBooking(state.selectedBooking!)
                             : null,
                         icon: const Icon(Icons.delete_outline, size: 18),
                         label: const Text(
@@ -2449,7 +2303,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       height: 44,
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          backgroundColor: _isEditMode
+                          backgroundColor: state.isEditMode
                               ? AppColors.navyDark.withValues(alpha: 0.1)
                               : null,
                           foregroundColor: Colors.black87,
@@ -2460,20 +2314,20 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                         ),
                         onPressed: () {
-                          setState(() => _isEditMode = !_isEditMode);
+                          final newValue = !state.isEditMode;
+                          _cubit.setEditMode(newValue);
                           _guestNameFocus.requestFocus();
                           AppToast.showInfo(
                             context,
-                            _isEditMode
+                            newValue
                                 ? 'Edit mode enabled: You can now modify guest details and click "Update".'
                                 : 'Edit mode closed.',
-                            title:
-                                _isEditMode ? 'Editing Active' : 'Edit Closed',
+                            title: newValue ? 'Editing Active' : 'Edit Closed',
                           );
                         },
                         icon: const Icon(Icons.edit_outlined, size: 18),
                         label: Text(
-                          _isEditMode ? 'Editing...' : 'Edit',
+                          state.isEditMode ? 'Editing...' : 'Edit',
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -2509,26 +2363,24 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       height: 44,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isConfirmed
+                          backgroundColor: state.isConfirmed
                               ? Colors.green
                               : AppColors.navyDark,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         onPressed: _confirmGuestDetails,
                         icon: Icon(
-                          _isConfirmed
+                          state.isConfirmed
                               ? Icons.check_circle
                               : Icons.verified_user_outlined,
                           size: 18,
                         ),
                         label: Text(
-                          _isConfirmed
+                          state.isConfirmed
                               ? 'Details Confirmed ✓'
                               : 'Confirm Guest Details',
                           style: const TextStyle(
@@ -2548,12 +2400,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
-  Widget _buildTable() {
-    final filtered = _bookings.where((b) {
-      if (_filterQuery.isEmpty) return true;
-      return b.guestName.toLowerCase().contains(_filterQuery) ||
-          b.id.toLowerCase().contains(_filterQuery) ||
-          b.roomNumber.toString().contains(_filterQuery);
+  Widget _buildTable(CheckInState state) {
+    final filtered = state.bookings.where((b) {
+      if (state.filterQuery.isEmpty) return true;
+      return b.guestName.toLowerCase().contains(state.filterQuery) ||
+          b.id.toLowerCase().contains(state.filterQuery) ||
+          b.roomNumber.toString().contains(state.filterQuery);
     }).toList();
 
     return Card(
@@ -2677,10 +2529,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
               ),
             ],
             rows: filtered.map((b) {
-              final isSelected = _selectedBooking?.id == b.id;
+              final isSelected = state.selectedBooking?.id == b.id;
               return DataRow(
                 selected: isSelected,
-                onSelectChanged: (_) => _selectBooking(b),
+                onSelectChanged: (_) => _onSelectBooking(b),
                 color: WidgetStateProperty.resolveWith<Color?>((states) {
                   if (isSelected) {
                     return AppColors.navyDark.withValues(alpha: 0.08);
@@ -2813,13 +2665,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                           onSelected: (val) {
                             if (val == 'edit') {
-                              _selectBooking(b);
-                              setState(() => _isEditMode = true);
+                              _onSelectBooking(b);
+                              _cubit.setEditMode(true);
                               _guestNameFocus.requestFocus();
                             } else if (val == 'delete') {
                               _deleteBooking(b);
                             } else if (val == 'print') {
-                              _selectBooking(b);
+                              _onSelectBooking(b);
                               _showPrintPreviewDialog();
                             }
                           },
@@ -2862,12 +2714,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
-  Widget _buildPanel3() {
-    final roomCharge = _selectedBooking != null
-        ? _selectedBooking!.roomCharge
+  Widget _buildPanel3(CheckInState state) {
+    final roomCharge = state.selectedBooking != null
+        ? state.selectedBooking!.roomCharge
         : 2500.0;
-    final extra = _selectedBooking != null ? _extraCharges : 2500.0;
-    final tax = _selectedBooking != null ? _selectedBooking!.gstAmount : 0.0;
+    final extra = state.selectedBooking != null ? _extraCharges : 2500.0;
+    final tax = state.selectedBooking != null
+        ? state.selectedBooking!.gstAmount
+        : 0.0;
     final total = roomCharge + extra + tax;
 
     return Card(
@@ -3131,39 +2985,46 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: Column(
-        children: [
-          _buildTopBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: 320, child: _buildPanel1()),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildPanel2()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocBuilder<CheckInCubit, CheckInState>(
+        builder: (context, state) {
+          return Scaffold(
+            backgroundColor: AppColors.bgLight,
+            body: Column(
+              children: [
+                _buildTopBar(state),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Column(
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 320, child: _buildPanel1(state)),
+                            const SizedBox(width: 16),
+                            Expanded(child: _buildPanel2(state)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildTable()),
-                      const SizedBox(width: 16),
-                      SizedBox(width: 300, child: _buildPanel3()),
-                    ],
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildTable(state)),
+                            const SizedBox(width: 16),
+                            SizedBox(width: 300, child: _buildPanel3(state)),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

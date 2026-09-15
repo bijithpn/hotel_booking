@@ -1,36 +1,24 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hotel_booking/config/app_colors.dart';
-import '../models/booking.dart';
-import '../models/room.dart';
-import '../widgets/room_status_legend.dart';
-import '../widgets/room_tile.dart';
-import '../widgets/stat_card.dart';
-import '../config/app_toast.dart';
+import '../../cubits/dashboard/dashboard_cubit.dart';
+import '../../models/booking.dart';
+import '../../models/room.dart';
+import '../../widgets/room_status_legend.dart';
+import '../../widgets/room_tile.dart';
+import '../../widgets/stat_card.dart';
+import '../../config/app_toast.dart';
 import 'package:go_router/go_router.dart';
-import '../routes/app_router.dart';
+import 'package:hotel_booking/routes/app_routes.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  late List<Room> _rooms;
-  Room? _selectedQuickRoom;
-
-  @override
-  void initState() {
-    super.initState();
-    _rooms = List.from(Room.allRooms);
-  }
-
-  double _occupancyPct() {
-    if (_rooms.isEmpty) return 0;
-    return _rooms.where((r) => r.status == RoomStatus.occupied).length /
-        _rooms.length *
+  double _occupancyPct(List<Room> rooms) {
+    if (rooms.isEmpty) return 0;
+    return rooms.where((r) => r.status == RoomStatus.occupied).length /
+        rooms.length *
         100;
   }
 
@@ -83,24 +71,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return matched.isNotEmpty ? matched : Booking.mockBookings.take(2).toList();
   }
 
-  void _setRoomStatus(Room room, RoomStatus status) {
-    setState(() => room.status = status);
-  }
-
-  void _setAllDirtyToAvailable() {
-    setState(() {
-      for (final r in _rooms) {
-        if (r.status == RoomStatus.dirty) r.status = RoomStatus.available;
-      }
-    });
-    AppToast.showSuccess(
-      context,
-      'Housekeeping batch update: All dirty rooms have been serviced and marked as Available.',
-      title: 'Rooms Updated',
-    );
-  }
-
-  void _showRoomQuickEdit(Room room) {
+  void _showRoomQuickEdit(BuildContext context, Room room) {
+    final cubit = context.read<DashboardCubit>();
     RoomStatus selected = room.status;
     showDialog(
       context: context,
@@ -158,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                _setRoomStatus(room, selected);
+                cubit.setRoomStatus(room, selected);
                 Navigator.pop(ctx);
                 AppToast.showSuccess(
                   context,
@@ -174,21 +146,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showMaintenanceRooms() {
-    final rooms = _rooms
+  void _showMaintenanceRooms(BuildContext context, List<Room> rooms) {
+    final maintenanceRooms = rooms
         .where((r) => r.status == RoomStatus.maintenance)
         .toList();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Maintenance Rooms'),
-        content: rooms.isEmpty
+        content: maintenanceRooms.isEmpty
             ? const Text('No rooms currently under maintenance.')
             : SizedBox(
                 width: 300,
                 child: ListView.separated(
                   shrinkWrap: true,
-                  itemCount: rooms.length,
+                  itemCount: maintenanceRooms.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) => ListTile(
                     dense: true,
@@ -200,9 +172,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    title: Text('Room ${rooms[i].number}'),
+                    title: Text('Room ${maintenanceRooms[i].number}'),
                     subtitle: Text(
-                      'Floor ${rooms[i].floor}  —  ${rooms[i].type}',
+                      'Floor ${maintenanceRooms[i].floor}  —  ${maintenanceRooms[i].type}',
                     ),
                   ),
                 ),
@@ -217,13 +189,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Future<void> _navigateTo(String routePath) async {
+  Future<void> _navigateTo(BuildContext context, String routePath) async {
+    final cubit = context.read<DashboardCubit>();
     await context.push(routePath);
-    if (mounted) {
-      setState(() {
-        _rooms = List.from(Room.allRooms);
-      });
-    }
+    cubit.reloadRooms();
   }
 
   String _formatDate(DateTime dt) {
@@ -250,7 +219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '$wd, ${months[dt.month - 1]} ${dt.day}, ${dt.year}  |  $h:$m $ampm';
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(BuildContext context) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -347,19 +316,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildNavTilesCard() {
+  Widget _buildNavTilesCard(BuildContext context) {
     final items = <_NavItem>[
       _NavItem(
         'Guest Check-in',
         Icons.input_rounded,
         const Color(0xFF4DB6AC),
-        onTap: () => _navigateTo(AppRoutes.checkIn),
+        onTap: () => _navigateTo(context, AppRoutes.checkIn),
       ),
       _NavItem(
         'Guest Check-Out',
         Icons.output_rounded,
         const Color(0xFFEF9A9A),
-        onTap: () => _navigateTo(AppRoutes.checkOut),
+        onTap: () => _navigateTo(context, AppRoutes.checkOut),
       ),
       _NavItem(
         'Reservations',
@@ -483,7 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildOperationalOverview() {
+  Widget _buildOperationalOverview(List<Room> rooms) {
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -514,7 +483,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Expanded(
                         child: StatCard(
                           label: 'Occupancy',
-                          value: '${_occupancyPct().toStringAsFixed(0)}%',
+                          value: '${_occupancyPct(rooms).toStringAsFixed(0)}%',
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -558,9 +527,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildFloorViewCard() {
-    final floor1 = _rooms.where((r) => r.floor == 1).toList();
-    final floor2 = _rooms.where((r) => r.floor == 2).toList();
+  Widget _buildFloorViewCard(BuildContext context, List<Room> rooms) {
+    final floor1 = rooms.where((r) => r.floor == 1).toList();
+    final floor2 = rooms.where((r) => r.floor == 2).toList();
 
     return Card(
       elevation: 0,
@@ -588,9 +557,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
             const SizedBox(height: 16),
-            _buildFloorSection('Floor 1', floor1),
+            _buildFloorSection(context, 'Floor 1', floor1),
             const SizedBox(height: 14),
-            _buildFloorSection('Floor 2', floor2),
+            _buildFloorSection(context, 'Floor 2', floor2),
             const SizedBox(height: 16),
             const RoomStatusLegend(),
             const SizedBox(height: 6),
@@ -605,6 +574,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFloorSection(
+    BuildContext context,
     String label,
     List<Room> rooms, {
     bool interactive = true,
@@ -613,7 +583,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final row2 = rooms.skip(13).toList();
 
     Widget tile(Room r) => interactive
-        ? RoomTile(room: r, onTap: () => _showRoomQuickEdit(r))
+        ? RoomTile(room: r, onTap: () => _showRoomQuickEdit(context, r))
         : RoomTile(room: r);
 
     return Row(
@@ -658,13 +628,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildOccupancyChartCard() {
-    final floor1 = _rooms.where((r) => r.floor == 1).toList();
-    final floor2 = _rooms.where((r) => r.floor == 2).toList();
-    final occupied = _rooms
-        .where((r) => r.status == RoomStatus.occupied)
-        .length;
-    final total = _rooms.length;
+  Widget _buildOccupancyChartCard(List<Room> rooms) {
+    final floor1 = rooms.where((r) => r.floor == 1).toList();
+    final floor2 = rooms.where((r) => r.floor == 2).toList();
+    final occupied = rooms.where((r) => r.status == RoomStatus.occupied).length;
+    final total = rooms.length;
     final pct = total == 0 ? 0.0 : occupied / total;
 
     return Card(
@@ -960,7 +928,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickStatusChangerCard() {
+  Widget _buildQuickStatusChangerCard(
+    BuildContext context,
+    DashboardState state,
+  ) {
+    final cubit = context.read<DashboardCubit>();
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -983,12 +955,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<Room>(
-              initialValue: _selectedQuickRoom,
+              initialValue: state.selectedQuickRoom,
               decoration: const InputDecoration(
                 labelText: 'Room #',
                 isDense: true,
               ),
-              items: _rooms
+              items: state.rooms
                   .map(
                     (r) => DropdownMenuItem(
                       value: r,
@@ -999,7 +971,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: (r) => setState(() => _selectedQuickRoom = r),
+              onChanged: (r) => cubit.selectQuickRoom(r),
             ),
             const SizedBox(height: 4),
             const Text(
@@ -1010,19 +982,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _selectedQuickRoom == null
+                onPressed: state.selectedQuickRoom == null
                     ? null
                     : () {
-                        _setRoomStatus(
-                          _selectedQuickRoom!,
-                          RoomStatus.available,
-                        );
+                        final room = state.selectedQuickRoom!;
+                        cubit.completeQuickCleaning();
                         AppToast.showSuccess(
                           context,
-                          'Housekeeping complete: Room ${_selectedQuickRoom!.number} is now Available and ready for check-in.',
+                          'Housekeeping complete: Room ${room.number} is now Available and ready for check-in.',
                           title: 'Room Ready',
                         );
-                        setState(() => _selectedQuickRoom = null);
                       },
                 icon: const Icon(Icons.check_circle_outline, size: 16),
                 label: const Text(
@@ -1042,7 +1011,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: _setAllDirtyToAvailable,
+                onPressed: () {
+                  cubit.setAllDirtyToAvailable();
+                  AppToast.showSuccess(
+                    context,
+                    'Housekeeping batch update: All dirty rooms have been serviced and marked as Available.',
+                    title: 'Rooms Updated',
+                  );
+                },
                 child: const Text(
                   'Set all Dirty to Cleaning',
                   style: TextStyle(fontSize: 12),
@@ -1053,7 +1029,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: _showMaintenanceRooms,
+                onPressed: () => _showMaintenanceRooms(context, state.rooms),
                 child: const Text(
                   'View All Maintenance',
                   style: TextStyle(fontSize: 12),
@@ -1068,60 +1044,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: Column(
-        children: [
-          _buildTopBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Main Dashboard',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.navyDark,
+    return BlocProvider(
+      create: (_) => DashboardCubit(),
+      child: Scaffold(
+        backgroundColor: AppColors.bgLight,
+        body: Column(
+          children: [
+            _buildTopBar(context),
+            Expanded(
+              child: BlocBuilder<DashboardCubit, DashboardState>(
+                builder: (context, state) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Main Dashboard',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.navyDark,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildNavTilesCard(context)),
+                            const SizedBox(width: 16),
+                            SizedBox(
+                              width: 280,
+                              child: _buildOperationalOverview(state.rooms),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildFloorViewCard(context, state.rooms),
+                            ),
+                            const SizedBox(width: 16),
+                            SizedBox(
+                              width: 280,
+                              child: _buildOccupancyChartCard(state.rooms),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 3, child: _buildGoingToVacateCard()),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: _buildQuickStatusChangerCard(
+                                context,
+                                state,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildNavTilesCard()),
-                      const SizedBox(width: 16),
-                      SizedBox(width: 280, child: _buildOperationalOverview()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildFloorViewCard()),
-                      const SizedBox(width: 16),
-                      SizedBox(width: 280, child: _buildOccupancyChartCard()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildGoingToVacateCard()),
-                      const SizedBox(width: 16),
-                      Expanded(flex: 2, child: _buildQuickStatusChangerCard()),
-                    ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

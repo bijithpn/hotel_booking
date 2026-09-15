@@ -1,19 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../screens/check_in_screen.dart';
-import '../screens/check_out_screen.dart';
-import '../screens/dashboard_screen.dart';
 
-abstract class AppRoutes {
-  static const String dashboard = '/';
-  static const String dashboardName = 'dashboard';
-
-  static const String checkIn = '/check-in';
-  static const String checkInName = 'check-in';
-
-  static const String checkOut = '/check-out';
-  static const String checkOutName = 'check-out';
-}
+import '../screens/screens.dart';
+import 'app_routes.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.dashboard,
@@ -35,20 +24,14 @@ final GoRouter appRouter = GoRouter(
     ),
   ],
   errorBuilder: (context, state) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Page Not Found'),
-    ),
+    appBar: AppBar(title: const Text('Page Not Found')),
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.redAccent,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
             const SizedBox(height: 16),
             Text(
               'No route defined for "${state.uri}"',

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hotel_booking/config/app_colors.dart';
-import '../models/booking.dart';
-import '../models/guest.dart';
-import '../models/room.dart';
-import '../routes/app_router.dart';
-import '../widgets/section_header.dart';
-import '../config/app_toast.dart';
+import '../../cubits/check_out/check_out_cubit.dart';
+import '../../models/guest.dart';
+import 'package:hotel_booking/routes/app_routes.dart';
+import '../../widgets/section_header.dart';
+import '../../config/app_toast.dart';
 
 class CheckOutScreen extends StatefulWidget {
   const CheckOutScreen({super.key});
@@ -16,61 +16,17 @@ class CheckOutScreen extends StatefulWidget {
 }
 
 class _CheckOutScreenState extends State<CheckOutScreen> {
-  late List<Booking> _bookings;
-  late List<Guest> _guests;
-  Guest? _selectedGuest;
-  int _roomInputNumber = 101;
-  final Set<int> _selectedRoomNos = {101, 103};
+  late final CheckOutCubit _cubit;
 
   final TextEditingController _searchCtrl = TextEditingController();
   final TextEditingController _paymentAmountCtrl = TextEditingController();
   final TextEditingController _chargeDescCtrl = TextEditingController();
-  String _paymentMethod = 'Credit Card';
-  String? _paymentAmountError;
-
-  final Map<int, List<AdditionalCharge>> _roomAdditionalCharges = {
-    101: [
-      AdditionalCharge(
-        description: 'Mini-bar (Water x2)',
-        date: DateTime(2026, 4, 3),
-        amount: 100.0,
-      ),
-      AdditionalCharge(
-        description: 'Room Service',
-        date: DateTime(2026, 4, 3),
-        amount: 1200.0,
-      ),
-      AdditionalCharge(
-        description: 'Restaurant Bill (Room 101)',
-        date: DateTime(2026, 4, 3),
-        amount: 850.0,
-      ),
-    ],
-    103: [
-      AdditionalCharge(
-        description: 'Mini-bar (Chips)',
-        date: DateTime(2026, 4, 3),
-        amount: 50.0,
-      ),
-      AdditionalCharge(
-        description: 'Restaurant Bill (Room 103)',
-        date: DateTime(2026, 4, 3),
-        amount: 1200.0,
-      ),
-    ],
-  };
-
-  final Map<int, double> _roomRates = {101: 1200.0, 103: 1200.0};
-
-  final Map<int, int> _roomNights = {101: 2, 103: 2};
 
   @override
   void initState() {
     super.initState();
-    _bookings = List.from(Booking.mockBookings);
-    _guests = List.from(Guest.mockGuests);
-    _selectedGuest = _guests.first;
-    _updatePaymentAmount();
+    _cubit = CheckOutCubit();
+    _paymentAmountCtrl.text = _cubit.state.combinedTotal.toStringAsFixed(2);
   }
 
   @override
@@ -78,34 +34,12 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     _searchCtrl.dispose();
     _paymentAmountCtrl.dispose();
     _chargeDescCtrl.dispose();
+    _cubit.close();
     super.dispose();
   }
 
-  double _getRoomBaseTotal(int roomNo) {
-    final nights = _roomNights[roomNo] ?? 2;
-    final rate = _roomRates[roomNo] ?? 1200.0;
-    return nights * rate;
-  }
-
-  double _getRoomExtraTotal(int roomNo) {
-    final charges = _roomAdditionalCharges[roomNo] ?? [];
-    return charges.fold(0.0, (sum, c) => sum + c.amount);
-  }
-
-  double _getRoomGrandTotal(int roomNo) {
-    return _getRoomBaseTotal(roomNo) + _getRoomExtraTotal(roomNo);
-  }
-
-  double _getCombinedTotal() {
-    double total = 0.0;
-    for (final r in _selectedRoomNos) {
-      total += _getRoomGrandTotal(r);
-    }
-    return total;
-  }
-
-  void _updatePaymentAmount() {
-    _paymentAmountCtrl.text = _getCombinedTotal().toStringAsFixed(2);
+  void _syncPaymentAmount() {
+    _paymentAmountCtrl.text = _cubit.state.combinedTotal.toStringAsFixed(2);
   }
 
   String _formatDate(DateTime dt) {
@@ -116,35 +50,17 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
   }
 
   void _findRoomGuest() {
-    setState(() {
-      final matching = _guests.where(
-        (g) => g.name.toLowerCase().contains(
-          _searchCtrl.text.toLowerCase().trim(),
-        ),
-      );
-      if (matching.isNotEmpty) {
-        _selectedGuest = matching.first;
-      }
-    });
+    final guest = _cubit.findGuestByName(_searchCtrl.text);
     AppToast.showInfo(
       context,
-      'Loaded reservation records for ${_selectedGuest?.name ?? "Guest"} (Room $_roomInputNumber).',
+      'Loaded reservation records for ${guest?.name ?? "Guest"} (Room ${_cubit.state.roomInputNumber}).',
       title: 'Records Found',
     );
   }
 
   void _addQuickCharge(int roomNo, String desc, double amt) {
-    setState(() {
-      _roomAdditionalCharges.putIfAbsent(roomNo, () => []);
-      _roomAdditionalCharges[roomNo]!.add(
-        AdditionalCharge(
-          description: desc,
-          date: DateTime(2026, 4, 3),
-          amount: amt,
-        ),
-      );
-      _updatePaymentAmount();
-    });
+    _cubit.addQuickCharge(roomNo, desc, amt);
+    _syncPaymentAmount();
     AppToast.showSuccess(
       context,
       'Added "$desc" (₹${amt.toStringAsFixed(2)}) charge to Room $roomNo bill.',
@@ -379,29 +295,16 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
   }
 
   void _processPaymentSingle(int roomNo) {
-    final double amountEntered =
-        double.tryParse(_paymentAmountCtrl.text) ?? 0.0;
-    final double due = _getRoomGrandTotal(roomNo);
-
-    if (amountEntered < due) {
+    final result = _cubit.processPaymentSingle(roomNo, _paymentAmountCtrl.text);
+    if (result.outcome == PaymentOutcome.insufficient) {
       AppToast.showError(
         context,
-        'Entered payment amount (₹${amountEntered.toStringAsFixed(2)}) is less than total due (₹${due.toStringAsFixed(2)}).',
+        'Entered payment amount (₹${result.amountEntered.toStringAsFixed(2)}) is less than total due (₹${result.due.toStringAsFixed(2)}).',
         title: 'Payment Insufficient',
       );
       return;
     }
-
-    setState(() {
-      final room = Room.allRooms.where((r) => r.number == roomNo);
-      if (room.isNotEmpty) {
-        room.first.status = RoomStatus.dirty;
-      }
-      _selectedRoomNos.remove(roomNo);
-      _bookings.removeWhere((b) => b.roomNumber == roomNo);
-      _updatePaymentAmount();
-    });
-
+    _syncPaymentAmount();
     AppToast.showSuccess(
       context,
       'Check-out successfully completed for Room $roomNo. Room status set to Dirty (ready for housekeeping).',
@@ -410,7 +313,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
   }
 
   void _processPaymentCombined() {
-    if (_selectedRoomNos.isEmpty) {
+    final result = _cubit.processPaymentCombined(_paymentAmountCtrl.text);
+
+    if (result.outcome == PaymentOutcome.noRoomsSelected) {
       AppToast.showWarning(
         context,
         'Please select at least one room from Panel 1 before attempting check-out.',
@@ -419,35 +324,19 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
       return;
     }
 
-    final double amountEntered =
-        double.tryParse(_paymentAmountCtrl.text) ?? 0.0;
-    final double due = _getCombinedTotal();
-
-    if (amountEntered < due) {
+    if (result.outcome == PaymentOutcome.insufficient) {
       AppToast.showError(
         context,
-        'Entered payment amount (₹${amountEntered.toStringAsFixed(2)}) is less than combined total due (₹${due.toStringAsFixed(2)}).',
+        'Entered payment amount (₹${result.amountEntered.toStringAsFixed(2)}) is less than combined total due (₹${result.due.toStringAsFixed(2)}).',
         title: 'Payment Insufficient',
       );
       return;
     }
 
-    final checkedOutList = List<int>.from(_selectedRoomNos);
-    setState(() {
-      for (final rNo in checkedOutList) {
-        final room = Room.allRooms.where((r) => r.number == rNo);
-        if (room.isNotEmpty) {
-          room.first.status = RoomStatus.dirty;
-        }
-        _bookings.removeWhere((b) => b.roomNumber == rNo);
-      }
-      _selectedRoomNos.clear();
-      _updatePaymentAmount();
-    });
-
+    _syncPaymentAmount();
     AppToast.showSuccess(
       context,
-      'Combined check-out completed for rooms: ${checkedOutList.join(", ")}. Room statuses set to Dirty.',
+      'Combined check-out completed for rooms: ${result.roomNumbers.join(", ")}. Room statuses set to Dirty.',
       title: 'Check-out Completed',
     );
   }
@@ -512,7 +401,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     );
   }
 
-  Widget _buildPanel1() {
+  Widget _buildPanel1(CheckOutState state) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -556,13 +445,13 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<Guest>(
-                                value: _selectedGuest,
+                                value: state.selectedGuest,
                                 isExpanded: true,
                                 hint: const Text(
                                   'Search Guest',
                                   style: TextStyle(fontSize: 13),
                                 ),
-                                items: _guests.map((g) {
+                                items: state.guests.map((g) {
                                   return DropdownMenuItem(
                                     value: g,
                                     child: Text(
@@ -573,9 +462,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                                   );
                                 }).toList(),
                                 onChanged: (g) {
-                                  if (g != null) {
-                                    setState(() => _selectedGuest = g);
-                                  }
+                                  if (g != null) _cubit.selectGuest(g);
                                 },
                               ),
                             ),
@@ -611,7 +498,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '$_roomInputNumber',
+                                  '${state.roomInputNumber}',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
@@ -621,20 +508,14 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     InkWell(
-                                      onTap: () =>
-                                          setState(() => _roomInputNumber++),
+                                      onTap: _cubit.incrementRoomInputNumber,
                                       child: const Icon(
                                         Icons.arrow_drop_up,
                                         size: 16,
                                       ),
                                     ),
                                     InkWell(
-                                      onTap: () => setState(
-                                        () => _roomInputNumber =
-                                            (_roomInputNumber > 101
-                                            ? _roomInputNumber - 1
-                                            : 101),
-                                      ),
+                                      onTap: _cubit.decrementRoomInputNumber,
                                       child: const Icon(
                                         Icons.arrow_drop_down,
                                         size: 16,
@@ -664,13 +545,13 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<Guest>(
-                            value: _selectedGuest,
+                            value: state.selectedGuest,
                             isExpanded: true,
                             hint: const Text(
                               'Select Guest from List',
                               style: TextStyle(fontSize: 13),
                             ),
-                            items: _guests.map((g) {
+                            items: state.guests.map((g) {
                               return DropdownMenuItem(
                                 value: g,
                                 child: Text(
@@ -680,7 +561,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                               );
                             }).toList(),
                             onChanged: (g) {
-                              if (g != null) setState(() => _selectedGuest = g);
+                              if (g != null) _cubit.selectGuest(g);
                             },
                           ),
                         ),
@@ -693,9 +574,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.navyDark,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -726,7 +605,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _selectedGuest?.name ?? 'Mathew Hyden',
+                          state.selectedGuest?.name ?? 'Mathew Hyden',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -765,7 +644,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '$_roomInputNumber',
+                                '${state.roomInputNumber}',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -832,9 +711,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                           ],
                         ),
                       ),
-                      _buildRoomStayRow(101, '02/04/2026-04/04/2026'),
+                      _buildRoomStayRow(state, 101, '02/04/2026-04/04/2026'),
                       const Divider(height: 1, color: Color(0xFFE5E5E5)),
-                      _buildRoomStayRow(103, '02/04/2026-04/04/2026'),
+                      _buildRoomStayRow(state, 103, '02/04/2026-04/04/2026'),
                     ],
                   ),
                 ),
@@ -870,8 +749,8 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     );
   }
 
-  Widget _buildRoomStayRow(int roomNo, String dates) {
-    final isChecked = _selectedRoomNos.contains(roomNo);
+  Widget _buildRoomStayRow(CheckOutState state, int roomNo, String dates) {
+    final isChecked = state.selectedRoomNos.contains(roomNo);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
@@ -898,14 +777,8 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                 child: Checkbox(
                   value: isChecked,
                   onChanged: (val) {
-                    setState(() {
-                      if (val == true) {
-                        _selectedRoomNos.add(roomNo);
-                      } else {
-                        _selectedRoomNos.remove(roomNo);
-                      }
-                      _updatePaymentAmount();
-                    });
+                    _cubit.toggleRoomSelection(roomNo, val == true);
+                    _syncPaymentAmount();
                   },
                 ),
               ),
@@ -921,7 +794,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     );
   }
 
-  Widget _buildPanel2() {
+  Widget _buildPanel2(CheckOutState state) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -938,7 +811,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_selectedRoomNos.isEmpty)
+                if (state.selectedRoomNos.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),
                     child: Center(
@@ -949,20 +822,20 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                     ),
                   )
                 else ...[
-                  if (_selectedRoomNos.contains(101))
-                    _buildRoomBillSection(101),
-                  if (_selectedRoomNos.contains(101) &&
-                      _selectedRoomNos.contains(103))
+                  if (state.selectedRoomNos.contains(101))
+                    _buildRoomBillSection(state, 101),
+                  if (state.selectedRoomNos.contains(101) &&
+                      state.selectedRoomNos.contains(103))
                     const SizedBox(height: 20),
-                  if (_selectedRoomNos.contains(103))
-                    _buildRoomBillSection(103),
+                  if (state.selectedRoomNos.contains(103))
+                    _buildRoomBillSection(state, 103),
                   const SizedBox(height: 20),
                   const Divider(color: Color(0xFFE0E0E0)),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      'Selected Rooms Combined Total: ₹${_getCombinedTotal().toStringAsFixed(2)}',
+                      'Selected Rooms Combined Total: ₹${state.combinedTotal.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -979,12 +852,12 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     );
   }
 
-  Widget _buildRoomBillSection(int roomNo) {
-    final baseTotal = _getRoomBaseTotal(roomNo);
-    final nights = _roomNights[roomNo] ?? 2;
-    final rate = _roomRates[roomNo] ?? 1200.0;
-    final grandTotal = _getRoomGrandTotal(roomNo);
-    final charges = _roomAdditionalCharges[roomNo] ?? [];
+  Widget _buildRoomBillSection(CheckOutState state, int roomNo) {
+    final baseTotal = state.getRoomBaseTotal(roomNo);
+    final nights = CheckOutState.roomNights[roomNo] ?? 2;
+    final rate = CheckOutState.roomRates[roomNo] ?? 1200.0;
+    final grandTotal = state.getRoomGrandTotal(roomNo);
+    final charges = state.roomAdditionalCharges[roomNo] ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1320,8 +1193,8 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     );
   }
 
-  Widget _buildPanel3() {
-    final totalDue = _getCombinedTotal();
+  Widget _buildPanel3(CheckOutState state) {
+    final totalDue = state.combinedTotal;
 
     return Card(
       elevation: 0,
@@ -1391,82 +1264,79 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [
-                    {'name': 'Credit Card', 'icon': Icons.credit_card},
-                    {'name': 'Cash', 'icon': Icons.payments_outlined},
-                    {'name': 'M-Pay', 'icon': Icons.phone_android},
-                  ].map((m) {
-                    final name = m['name'] as String;
-                    final icon = m['icon'] as IconData;
-                    final isSelected = _paymentMethod == name;
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          _paymentMethod = name;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(6),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        height: 38,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.navyDark
-                              : Colors.white,
+                  children:
+                      [
+                        {'name': 'Credit Card', 'icon': Icons.credit_card},
+                        {'name': 'Cash', 'icon': Icons.payments_outlined},
+                        {'name': 'M-Pay', 'icon': Icons.phone_android},
+                      ].map((m) {
+                        final name = m['name'] as String;
+                        final icon = m['icon'] as IconData;
+                        final isSelected = state.paymentMethod == name;
+                        return InkWell(
+                          onTap: () => _cubit.setPaymentMethod(name),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.navyDark
-                                : const Color(0xFFCCCCCC),
-                            width: isSelected ? 1.5 : 1.0,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.navyDark.withValues(
-                                      alpha: 0.25,
-                                    ),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              icon,
-                              size: 16,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
                               color: isSelected
-                                  ? Colors.white
-                                  : AppColors.navyDark,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              name,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                  ? AppColors.navyDark
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
                                 color: isSelected
-                                    ? Colors.white
-                                    : Colors.black87,
+                                    ? AppColors.navyDark
+                                    : const Color(0xFFCCCCCC),
+                                width: isSelected ? 1.5 : 1.0,
                               ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.navyDark.withValues(
+                                          alpha: 0.25,
+                                        ),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                            if (isSelected) ...[
-                              const SizedBox(width: 5),
-                              const Icon(
-                                Icons.check_circle,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  icon,
+                                  size: 16,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.navyDark,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  name,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 5),
+                                  const Icon(
+                                    Icons.check_circle,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -1484,20 +1354,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                     controller: _paymentAmountCtrl,
                     keyboardType: TextInputType.number,
                     onChanged: (val) {
-                      final entered = double.tryParse(val.trim());
-                      final totalDue = _getCombinedTotal();
-                      setState(() {
-                        if (val.trim().isEmpty ||
-                            entered == null ||
-                            entered <= 0) {
-                          _paymentAmountError = 'Enter a valid payment amount';
-                        } else if (entered < totalDue) {
-                          _paymentAmountError =
-                              'Must be at least ₹${totalDue.toStringAsFixed(2)}';
-                        } else {
-                          _paymentAmountError = null;
-                        }
-                      });
+                      _cubit.validatePaymentAmount(val, state.combinedTotal);
                     },
                     decoration: InputDecoration(
                       prefixText: '₹ ',
@@ -1507,22 +1364,22 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         color: AppColors.navyDark,
                       ),
                       filled: true,
-                      fillColor: _paymentAmountError != null
+                      fillColor: state.paymentAmountError != null
                           ? const Color(0xFFFFF2F0)
                           : Colors.white,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6),
                         borderSide: BorderSide(
-                          color: _paymentAmountError != null
+                          color: state.paymentAmountError != null
                               ? Colors.red.shade700
                               : const Color(0xFFCCCCCC),
-                          width: _paymentAmountError != null ? 1.5 : 1.0,
+                          width: state.paymentAmountError != null ? 1.5 : 1.0,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6),
                         borderSide: BorderSide(
-                          color: _paymentAmountError != null
+                          color: state.paymentAmountError != null
                               ? Colors.red.shade700
                               : AppColors.navyDark,
                           width: 1.5,
@@ -1541,7 +1398,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                     ),
                   ),
                 ),
-                if (_paymentAmountError != null)
+                if (state.paymentAmountError != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Row(
@@ -1550,7 +1407,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            _paymentAmountError!,
+                            state.paymentAmountError!,
                             style: const TextStyle(
                               fontSize: 10,
                               color: Colors.red,
@@ -1574,8 +1431,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    onPressed: _selectedRoomNos.isNotEmpty
-                        ? () => _processPaymentSingle(_selectedRoomNos.first)
+                    onPressed: state.selectedRoomNos.isNotEmpty
+                        ? () =>
+                              _processPaymentSingle(state.selectedRoomNos.first)
                         : null,
                     child: Column(
                       children: [
@@ -1587,7 +1445,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                           ),
                         ),
                         Text(
-                          'Proceed with Room ${_selectedRoomNos.isNotEmpty ? _selectedRoomNos.first : 101} Check-out\nComplete Check-out',
+                          'Proceed with Room ${state.selectedRoomNos.isNotEmpty ? state.selectedRoomNos.first : 101} Check-out\nComplete Check-out',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 9.5,
@@ -1611,7 +1469,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    onPressed: _selectedRoomNos.isNotEmpty
+                    onPressed: state.selectedRoomNos.isNotEmpty
                         ? _processPaymentCombined
                         : null,
                     child: const Column(
@@ -1687,43 +1545,53 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: Column(
-        children: [
-          _buildTopBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final double availableForPanel2 =
-                      constraints.maxWidth - 310 - 300 - 32;
-                  final double panel2Width = availableForPanel2 > 440
-                      ? availableForPanel2
-                      : 440;
-
+    return BlocProvider.value(
+      value: _cubit,
+      child: Scaffold(
+        backgroundColor: AppColors.bgLight,
+        body: Column(
+          children: [
+            _buildTopBar(),
+            Expanded(
+              child: BlocBuilder<CheckOutCubit, CheckOutState>(
+                builder: (context, state) {
                   return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 310, child: _buildPanel1()),
-                        const SizedBox(width: 16),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double availableForPanel2 =
+                            constraints.maxWidth - 310 - 300 - 32;
+                        final double panel2Width = availableForPanel2 > 440
+                            ? availableForPanel2
+                            : 440;
 
-                        SizedBox(width: panel2Width, child: _buildPanel2()),
-                        const SizedBox(width: 16),
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(width: 310, child: _buildPanel1(state)),
+                              const SizedBox(width: 16),
 
-                        SizedBox(width: 300, child: _buildPanel3()),
-                      ],
+                              SizedBox(
+                                width: panel2Width,
+                                child: _buildPanel2(state),
+                              ),
+                              const SizedBox(width: 16),
+
+                              SizedBox(width: 300, child: _buildPanel3(state)),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   );
                 },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
