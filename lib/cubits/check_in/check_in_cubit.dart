@@ -191,9 +191,6 @@ class CheckInCubit extends Cubit<CheckInState> {
     emit(state.copyWith(isConfirmed: value));
   }
 
-  /// Selects [g] as the active guest. If a booking exists for this guest it
-  /// is also selected (cascading all its fields). Returns true when a
-  /// booking was matched and cascaded.
   bool selectGuest(Guest g) {
     final matchingBooking = state.bookings.where(
       (b) => b.guestName.toLowerCase() == g.name.toLowerCase(),
@@ -256,8 +253,6 @@ class CheckInCubit extends Cubit<CheckInState> {
     return true;
   }
 
-  /// Deletes [b]. Returns the newly selected booking (if any) so the widget
-  /// can resync its text controllers, or null if selection was cleared.
   Booking? deleteBooking(Booking b) {
     final updatedBookings = state.bookings
         .where((item) => item.id != b.id)

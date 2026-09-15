@@ -8,6 +8,7 @@ import '../../models/booking.dart';
 import '../../models/guest.dart';
 import '../../widgets/section_header.dart';
 import '../../config/app_toast.dart';
+import '../../config/responsive.dart';
 
 class CheckInScreen extends StatefulWidget {
   const CheckInScreen({super.key});
@@ -272,7 +273,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               ],
             ),
             content: SizedBox(
-              width: 380,
+              width: MediaQuery.of(context).size.width < 420 ? MediaQuery.of(context).size.width * 0.9 : 380,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,7 +484,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               ],
             ),
             content: SizedBox(
-              width: 380,
+              width: MediaQuery.of(context).size.width < 420 ? MediaQuery.of(context).size.width * 0.9 : 380,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,7 +769,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
           ],
         ),
         content: SizedBox(
-          width: 380,
+          width: MediaQuery.of(context).size.width < 420 ? MediaQuery.of(context).size.width * 0.9 : 380,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,7 +843,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Hotel Registration Card'),
         content: SizedBox(
-          width: 380,
+          width: MediaQuery.of(context).size.width < 420 ? MediaQuery.of(context).size.width * 0.9 : 380,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -929,15 +930,18 @@ class _CheckInScreenState extends State<CheckInScreen> {
             tooltip: 'Back to Dashboard',
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Guest Check-in',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.navyDark,
+          Flexible(
+            child: Text(
+              'Guest Check-in',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: Responsive.isMobile(context) ? 17 : 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.navyDark,
+              ),
             ),
           ),
-          const SizedBox(width: 32),
+          SizedBox(width: Responsive.isMobile(context) ? 12 : 32),
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 450),
@@ -1164,12 +1168,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                           const SizedBox(height: 4),
                           const Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                '07:00 PM ',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
+                              Flexible(
+                                child: Text(
+                                  '07:00 PM ',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               Icon(
@@ -1254,9 +1262,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     ),
                   ),
 
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                responsiveRow(
+                  context,
+                  [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1291,43 +1299,47 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 width: 1.0,
                               ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.bed,
-                                  size: 16,
-                                  color: AppColors.navyDark,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${state.selectedBooking?.roomNumber ?? 101}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.bed,
+                                    size: 16,
                                     color: AppColors.navyDark,
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.navyDark,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                  child: const Text(
-                                    'SELECTED',
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      color: Colors.white,
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${state.selectedBooking?.roomNumber ?? 101}',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppColors.navyDark,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.navyDark,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: const Text(
+                                      'SELECTED',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -1724,12 +1736,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       ),
                     ),
                   ],
+                  crossAxisAlignment: CrossAxisAlignment.start,
                 ),
                 const SizedBox(height: 16),
 
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                responsiveRow(
+                  context,
+                  [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1783,15 +1796,19 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    state.checkoutDate != null
-                                        ? _formatDate(state.checkoutDate!)
-                                        : 'Select Date',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
+                                  Flexible(
+                                    child: Text(
+                                      state.checkoutDate != null
+                                          ? _formatDate(state.checkoutDate!)
+                                          : 'Select Date',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(width: 4),
                                   const Icon(
                                     Icons.calendar_month,
                                     size: 18,
@@ -2178,12 +2195,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: const [
-                                    Text(
-                                      'Additional Charges',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: AppColors.navyDark,
+                                    Flexible(
+                                      child: Text(
+                                        'Additional Charges',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: AppColors.navyDark,
+                                        ),
                                       ),
                                     ),
                                     Icon(
@@ -2202,11 +2222,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: const [
-                                    Text(
-                                      'Room Charge',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        color: Colors.black54,
+                                    Flexible(
+                                      child: Text(
+                                        'Room Charge',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: Colors.black54,
+                                        ),
                                       ),
                                     ),
                                     Text(
@@ -2223,11 +2246,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text(
-                                      'Extra Charges',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        color: Colors.black54,
+                                    const Flexible(
+                                      child: Text(
+                                        'Extra Charges',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: Colors.black54,
+                                        ),
                                       ),
                                     ),
                                     Text(
@@ -2244,11 +2270,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text(
-                                      'Tax (GST)',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        color: Colors.black54,
+                                    const Flexible(
+                                      child: Text(
+                                        'Tax (GST)',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: Colors.black54,
+                                        ),
                                       ),
                                     ),
                                     Text(
@@ -2268,11 +2297,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       ),
                     ),
                   ],
+                  crossAxisAlignment: CrossAxisAlignment.start,
                 ),
                 const SizedBox(height: 18),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
                     SizedBox(
                       height: 44,
@@ -2743,9 +2776,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Room Charge',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    const Flexible(
+                      child: Text(
+                        'Room Charge',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
                     ),
                     Text(
                       '₹${roomCharge.toStringAsFixed(2)}',
@@ -2760,9 +2796,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Extra Charges',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    const Flexible(
+                      child: Text(
+                        'Extra Charges',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
                     ),
                     Text(
                       '₹${extra.toStringAsFixed(2)}',
@@ -2777,9 +2816,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Tax',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    const Flexible(
+                      child: Text(
+                        'Tax',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
                     ),
                     Text(
                       '₹${tax.toStringAsFixed(2)}',
@@ -2796,12 +2838,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Total Amount:',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    const Flexible(
+                      child: Text(
+                        'Total Amount:',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                     Text(
@@ -2818,9 +2863,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Total Paid:',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    const Flexible(
+                      child: Text(
+                        'Total Paid:',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
                     ),
                     Text(
                       '₹${total.toStringAsFixed(2)}',
@@ -2995,30 +3043,59 @@ class _CheckInScreenState extends State<CheckInScreen> {
               children: [
                 _buildTopBar(state),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    child: Column(
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 1024;
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                        child: Column(
                           children: [
-                            SizedBox(width: 320, child: _buildPanel1(state)),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildPanel2(state)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 320,
+                                    child: _buildPanel1(state),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: _buildPanel2(state)),
+                                ],
+                              )
+                            else
+                              Column(
+                                children: [
+                                  _buildPanel1(state),
+                                  const SizedBox(height: 16),
+                                  _buildPanel2(state),
+                                ],
+                              ),
+                            const SizedBox(height: 16),
 
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: _buildTable(state)),
-                            const SizedBox(width: 16),
-                            SizedBox(width: 300, child: _buildPanel3(state)),
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: _buildTable(state)),
+                                  const SizedBox(width: 16),
+                                  SizedBox(
+                                    width: 300,
+                                    child: _buildPanel3(state),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                children: [
+                                  _buildTable(state),
+                                  const SizedBox(height: 16),
+                                  _buildPanel3(state),
+                                ],
+                              ),
                           ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],

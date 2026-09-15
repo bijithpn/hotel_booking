@@ -31,8 +31,6 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
   }
 
-  /// Marks the currently selected quick room as available and clears the
-  /// selection. Returns the room that was updated, or null if none selected.
   Room? completeQuickCleaning() {
     final room = state.selectedQuickRoom;
     if (room == null) return null;

@@ -7,6 +7,7 @@ import '../../models/guest.dart';
 import 'package:hotel_booking/routes/app_routes.dart';
 import '../../widgets/section_header.dart';
 import '../../config/app_toast.dart';
+import '../../config/responsive.dart';
 
 class CheckOutScreen extends StatefulWidget {
   const CheckOutScreen({super.key});
@@ -127,7 +128,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
               ],
             ),
             content: SizedBox(
-              width: 380,
+              width: MediaQuery.of(context).size.width < 420 ? MediaQuery.of(context).size.width * 0.9 : 380,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,15 +360,18 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
             tooltip: 'Back to Dashboard',
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Guest Check-out',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.navyDark,
+          Flexible(
+            child: Text(
+              'Guest Check-out',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: Responsive.isMobile(context) ? 17 : 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.navyDark,
+              ),
             ),
           ),
-          const SizedBox(width: 32),
+          SizedBox(width: Responsive.isMobile(context) ? 12 : 32),
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 450),
@@ -418,10 +422,11 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 3,
+                    SizedBox(
+                      width: double.infinity,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -470,9 +475,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -533,9 +538,11 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: double.infinity,
                       child: Container(
                         height: 44,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -567,8 +574,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 8),
                     SizedBox(
+                      width: double.infinity,
                       height: 44,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -596,24 +604,28 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Guest Name',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          state.selectedGuest?.name ?? 'Mathew Hyden',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Guest Name',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            state.selectedGuest?.name ?? 'Mathew Hyden',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -753,41 +765,58 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     final isChecked = state.selectedRoomNos.contains(roomNo);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 45,
-            child: Text(
-              '$roomNo',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              dates,
-              style: const TextStyle(fontSize: 11, color: Colors.black87),
-            ),
-          ),
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: isChecked,
-                  onChanged: (val) {
-                    _cubit.toggleRoomSelection(roomNo, val == true);
-                    _syncPaymentAmount();
-                  },
+                width: 45,
+                child: Text(
+                  '$roomNo',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              const SizedBox(width: 4),
-              const Text(
-                'Select for Check-out',
-                style: TextStyle(fontSize: 10, color: Colors.black54),
+              Expanded(
+                child: Text(
+                  dates,
+                  style: const TextStyle(fontSize: 11, color: Colors.black87),
+                ),
               ),
             ],
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Checkbox(
+                    value: isChecked,
+                    onChanged: (val) {
+                      _cubit.toggleRoomSelection(roomNo, val == true);
+                      _syncPaymentAmount();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Select for Check-out',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1126,14 +1155,18 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Room $roomNo Total',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            Flexible(
+              child: Text(
+                'Room $roomNo Total',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               '₹${grandTotal.toStringAsFixed(2)}',
               style: const TextStyle(
@@ -1215,20 +1248,28 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Total Amount Due',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    const Flexible(
+                      child: Text(
+                        'Total Amount Due',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                    Text(
-                      '₹${totalDue.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.navyDark,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '₹${totalDue.toStringAsFixed(2)}',
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.navyDark,
+                        ),
                       ),
                     ),
                   ],
@@ -1559,8 +1600,22 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
+                        final bool isWide = constraints.maxWidth >= 1024;
+                        if (!isWide) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildPanel1(state),
+                              const SizedBox(height: 16),
+                              _buildPanel2(state),
+                              const SizedBox(height: 16),
+                              _buildPanel3(state),
+                            ],
+                          );
+                        }
+
                         final double availableForPanel2 =
-                            constraints.maxWidth - 310 - 300 - 32;
+                            constraints.maxWidth - 340 - 300 - 32;
                         final double panel2Width = availableForPanel2 > 440
                             ? availableForPanel2
                             : 440;
@@ -1571,7 +1626,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(width: 310, child: _buildPanel1(state)),
+                              SizedBox(width: 340, child: _buildPanel1(state)),
                               const SizedBox(width: 16),
 
                               SizedBox(

@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hotel_booking/config/app_colors.dart';
+import '../../config/responsive.dart';
 import '../../cubits/dashboard/dashboard_cubit.dart';
 import '../../models/booking.dart';
 import '../../models/room.dart';
@@ -220,9 +221,18 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildTopBar(BuildContext context) {
+    final isMobile = Responsive.isMobile(context);
+    final isTablet = Responsive.isTablet(context);
+    final showDate = !isMobile;
+    final showQuickActionsLabel = !isMobile;
+    final showLogoText = !isMobile || MediaQuery.sizeOf(context).width >= 360;
+
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 20,
+        vertical: 12,
+      ),
       child: Row(
         children: [
           Container(
@@ -234,37 +244,43 @@ class DashboardScreen extends StatelessWidget {
             ),
             child: const Icon(Icons.grid_view, color: Colors.white, size: 20),
           ),
-          const SizedBox(width: 8),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Raintech',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.navyDark,
+          if (showLogoText) ...[
+            const SizedBox(width: 8),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Raintech',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.navyDark,
+                  ),
                 ),
-              ),
-              Text(
-                'HOTEL',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                  letterSpacing: 1.5,
+                Text(
+                  'HOTEL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                    letterSpacing: 1.5,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 24),
+              ],
+            ),
+          ],
+          SizedBox(width: isMobile ? 12 : 24),
 
           Expanded(
             child: SizedBox(
               height: 36,
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search guests, rooms, reservations, staff...',
+                  hintText: isMobile
+                      ? 'Search...'
+                      : isTablet
+                      ? 'Search guests, rooms...'
+                      : 'Search guests, rooms, reservations, staff...',
                   hintStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.search, size: 18),
                   border: OutlineInputBorder(
@@ -281,36 +297,57 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          Text(
-            _formatDate(DateTime.now()),
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.attach_money, size: 16),
-            label: const Text('Quick Actions', style: TextStyle(fontSize: 12)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.navyDark,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (showDate) ...[
+                    const SizedBox(width: 16),
+                    Text(
+                      _formatDate(DateTime.now()),
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.attach_money, size: 16),
+                    label: Text(
+                      showQuickActionsLabel ? 'Quick Actions' : '',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.navyDark,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: showQuickActionsLabel ? 14 : 8,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                  if (!isMobile)
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {},
+                      iconSize: 22,
+                    ),
+                  const SizedBox(width: 4),
+                  const CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AppColors.navyDark,
+                    child: Icon(Icons.person, size: 18, color: Colors.white),
+                  ),
+                  const SizedBox(width: 4),
+                ],
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
-            iconSize: 22,
-          ),
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.navyDark,
-            child: Icon(Icons.person, size: 18, color: Colors.white),
-          ),
-          const SizedBox(width: 4),
         ],
       ),
     );
@@ -367,11 +404,21 @@ class DashboardScreen extends StatelessWidget {
         child: GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 6,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: Responsive.value(
+              context,
+              mobile: 3,
+              tablet: 4,
+              desktop: 6,
+            ),
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            childAspectRatio: 1.0,
+            childAspectRatio: Responsive.value(
+              context,
+              mobile: 0.85,
+              tablet: 0.9,
+              desktop: 1.0,
+            ),
           ),
           itemCount: items.length,
           itemBuilder: (_, i) => _buildNavTile(items[i]),
@@ -787,19 +834,22 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Icon(Icons.bed_outlined, size: 16, color: AppColors.navyDark),
                 SizedBox(width: 6),
-                Text(
-                  'Going to Vacate Rooms',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: AppColors.navyDark,
+                Flexible(
+                  child: Text(
+                    'Going to Vacate Rooms',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: AppColors.navyDark,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 100,
+              height: 125,
               child: vacating.isEmpty
                   ? const Center(
                       child: Text(
@@ -956,6 +1006,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 12),
             DropdownButtonFormField<Room>(
               initialValue: state.selectedQuickRoom,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Room #',
                 isDense: true,
@@ -1054,65 +1105,111 @@ class DashboardScreen extends StatelessWidget {
             Expanded(
               child: BlocBuilder<DashboardCubit, DashboardState>(
                 builder: (context, state) {
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Main Dashboard',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.navyDark,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 1024;
 
-                        Row(
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: _buildNavTilesCard(context)),
-                            const SizedBox(width: 16),
-                            SizedBox(
-                              width: 280,
-                              child: _buildOperationalOverview(state.rooms),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildFloorViewCard(context, state.rooms),
-                            ),
-                            const SizedBox(width: 16),
-                            SizedBox(
-                              width: 280,
-                              child: _buildOccupancyChartCard(state.rooms),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 3, child: _buildGoingToVacateCard()),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: _buildQuickStatusChangerCard(
-                                context,
-                                state,
+                            const Text(
+                              'Main Dashboard',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.navyDark,
                               ),
                             ),
+                            const SizedBox(height: 16),
+
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: _buildNavTilesCard(context)),
+                                  const SizedBox(width: 16),
+                                  SizedBox(
+                                    width: 280,
+                                    child: _buildOperationalOverview(
+                                      state.rooms,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildNavTilesCard(context),
+                                  const SizedBox(height: 16),
+                                  _buildOperationalOverview(state.rooms),
+                                ],
+                              ),
+                            const SizedBox(height: 16),
+
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _buildFloorViewCard(
+                                      context,
+                                      state.rooms,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  SizedBox(
+                                    width: 280,
+                                    child: _buildOccupancyChartCard(
+                                      state.rooms,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildFloorViewCard(context, state.rooms),
+                                  const SizedBox(height: 16),
+                                  _buildOccupancyChartCard(state.rooms),
+                                ],
+                              ),
+                            const SizedBox(height: 16),
+
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: _buildGoingToVacateCard(),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 2,
+                                    child: _buildQuickStatusChangerCard(
+                                      context,
+                                      state,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildGoingToVacateCard(),
+                                  const SizedBox(height: 16),
+                                  _buildQuickStatusChangerCard(context, state),
+                                ],
+                              ),
                           ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               ),
